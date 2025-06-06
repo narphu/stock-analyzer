@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import pickle
 
-df = pd.read_csv("data.csv")
+df = pd.read_csv("stock_data.csv")
 df['Target'] = df['Close'].shift(-1) > df['Close']
 df = df.dropna()
 
