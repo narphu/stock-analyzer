@@ -76,3 +76,15 @@ docker run -p 8080:8080 stock-analyzer-backend
 ```bash
 curl http://localhost:8080/health
 ```
+
+## 🐳 Step 5: Run with Frontend
+### Build frontend dependencies. 
+We use a commbination of Vite+React+TailwindCSS for our frontend.
+``` bash
+ make frontend-deps
+```
+
+### Start both the servers
+``` bash
+ make docker-up
+```

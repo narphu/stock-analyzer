@@ -12,15 +12,22 @@ venv:
 
 .PHONY: dev
 dev: venv
-	$(VENV_DIR)/bin/uvicorn backend/main:app --reload
+	PYTHONPATH=. $(VENV_DIR)/bin/uvicorn backend.main:app --reload
 
 .PHONY: deps
 deps:
-	$(VENV_DIR)/bin/pip install -r $(REQUIREMENTS)
+	$(VENV_DIR)/bin/python -m pip install --upgrade pip
+	$(VENV_DIR)/bin/python -m pip install -r $(REQUIREMENTS)
 
 .PHONY: freeze
 freeze:
 	$(VENV_DIR)/bin/pip freeze > $(REQUIREMENTS)
+
+# === Models ===
+.PHONY: train-models
+train-models:
+	PYTHONPATH=. $(VENV_DIR)/bin/python backend/train_model.py
+
 
 # === React Frontend ===
 .PHONY: frontend

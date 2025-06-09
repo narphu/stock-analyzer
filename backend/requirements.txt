@@ -5,3 +5,5 @@ yfinance
 joblib
 fastapi
 uvicorn
+joblib
+prophet>=1.1
