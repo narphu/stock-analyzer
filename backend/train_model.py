@@ -1,28 +1,55 @@
-from prophet import Prophet
+import os
+import joblib
 import yfinance as yf
 import pandas as pd
-import joblib
-import os
+from prophet import Prophet
+from concurrent.futures import ThreadPoolExecutor
+import requests
+from bs4 import BeautifulSoup
+from functools import lru_cache    # ⚡ Simple in-memory caching
 
-TICKERS = ["AAPL", "MSFT", "GOOGL", "TSLA", "AMZN"]
+
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
+
+
+def get_sp500_tickers():
+    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    table = soup.find("table", {"id": "constituents"})
+    tickers = pd.read_html(str(table))[0]["Symbol"].tolist()
+    tickers = [t.replace(".", "-") for t in tickers]  # BRK.B → BRK-B
+    return tickers
+
 def train(ticker):
-    print(f"🔄 Training model for {ticker}")
+    try:
+        model_path = os.path.join(MODEL_DIR, f"{ticker}_prophet.pkl")
+        if os.path.exists(model_path):
+            print(f"⏭️ Skipping {ticker}: model already exists")
+            return
 
-    df = prepare_yfinance_data(ticker)
+        print(f"🔄 Training {ticker}")
+        df = prepare_yfinance_data(ticker)
+        if df.empty:
+            print(f"❌ No usable data for {ticker}")
+            return
 
-    if df.empty:
-        print(f"❌ Invalid data for {ticker}")
-        return
+        model = Prophet(daily_seasonality=True)
+        model.fit(df)
+        joblib.dump(model, model_path)
+        print(f"✅ Saved: {model_path}")
+    except Exception as e:
+        print(f"❌ Error training {ticker}: {e}")
 
-    model = Prophet(daily_seasonality=True)
-    model.fit(df)
+def train_all_sp500():
+    tickers = get_sp500_tickers()
+    print(f"📈 Found {len(tickers)} S&P 500 tickers")
 
-    path = os.path.join(MODEL_DIR, f"{ticker}_prophet.pkl")
-    joblib.dump(model, path)
-    print(f"✅ Model saved: {path}")
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        executor.map(train, tickers)
+
 
 def prepare_yfinance_data(ticker: str, period: str = "3y", interval: str = "1d") -> pd.DataFrame:
     """
@@ -46,5 +73,4 @@ def prepare_yfinance_data(ticker: str, period: str = "3y", interval: str = "1d")
     return df
 
 if __name__ == "__main__":
-    for ticker in TICKERS:
-        train(ticker)
+    train_all_sp500()

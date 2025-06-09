@@ -7,6 +7,7 @@ import pandas as pd
 import os
 from prophet import Prophet
 from datetime import datetime
+from functools import lru_cache    # ⚡ Simple in-memory caching
 
 
 app = FastAPI()
@@ -23,8 +24,15 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(__file__)
 MODEL_DIR = os.path.join(BASE_DIR, "models")
 
-class TickerInput(BaseModel):
+class PredictRequest(BaseModel):
     ticker: str
+
+@lru_cache(maxsize=100)
+def load_model(ticker: str):
+    path = os.path.join(MODEL_DIR, f"{ticker}_prophet.pkl")
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Model for {ticker} not found")
+    return joblib.load(path)
 
 def load_model(ticker: str) -> Prophet:
     path = os.path.join(MODEL_DIR, f"{ticker.upper()}_prophet.pkl")
@@ -37,9 +45,12 @@ def health_check():
     return {"status": "ok"}
 
 @app.post("/predict")
-def predict(input: TickerInput):
-    ticker = input.ticker.upper()
-    model = load_model(ticker)
+def predict(req: PredictRequest):
+
+    try:
+        model = load_model(req.ticker.upper())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Model not found")
 
     today = pd.Timestamp.now().normalize()
 
@@ -56,7 +67,7 @@ def predict(input: TickerInput):
     result = forecast[forecast["days_ahead"].isin(desired_days)]
 
     return {
-        "ticker": ticker,
+        "ticker":  req.ticker.upper(),
         "predictions": [
             {
                 "days": int(row.days_ahead),
