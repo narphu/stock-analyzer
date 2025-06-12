@@ -3,6 +3,8 @@ PYTHON=python3
 VENV_DIR=backend/venv
 BACKEND_DIR=backend
 REQUIREMENTS=$(BACKEND_DIR)/requirements.txt
+FRONTEND_IMAGE=896924684176.dkr.ecr.us-east-2.amazonaws.com/stock-analyzer-frontend
+BACKEND_IMAGE=896924684176.dkr.ecr.us-east-2.amazonaws.com/stock-analyzer-backend
 
 .PHONY: venv
 venv:
@@ -56,6 +58,20 @@ docker-rebuild:
 	docker-compose down -v
 	docker-compose build
 	docker-compose up
+
+# Frontend ECR build
+build-frontend-prod:
+	docker build -f frontend/Dockerfile.prod -t $(FRONTEND_IMAGE) frontend
+
+# Backend ECR build
+build-backend-prod:
+	docker build -f backend/Dockerfile.prod -t $(BACKEND_IMAGE) backend
+
+push-frontend: build-frontend-prod
+	docker push $(FRONTEND_IMAGE)
+
+push-backend: build-backend-prod
+	docker push $(BACKEND_IMAGE)
 
 # === Clean ===
 .PHONY: clean
