@@ -5,6 +5,9 @@ BACKEND_DIR=backend
 REQUIREMENTS=$(BACKEND_DIR)/requirements.txt
 FRONTEND_IMAGE=896924684176.dkr.ecr.us-east-2.amazonaws.com/stock-analyzer-frontend
 BACKEND_IMAGE=896924684176.dkr.ecr.us-east-2.amazonaws.com/stock-analyzer-backend
+VERSION=v0.0.2
+BUCKET_NAME=shrubb-ai-stock-analyzer-frontend
+DIST_DIR=frontend/dist
 
 .PHONY: venv
 venv:
@@ -44,6 +47,23 @@ frontend-deps:
 frontend-build:
 	cd frontend && npm run build
 
+# Upload dist/ folder to S3
+.PHONY: frontend-upload
+frontend-upload:
+	@echo "🚀 Uploading to S3 bucket $(BUCKET_NAME)..."
+	aws s3 sync $(DIST_DIR)/ s3://$(BUCKET_NAME) --delete
+
+# Combined build + upload
+.PHONY: frontend-deploy
+frontend-deploy: frontend-build frontend-upload
+	@echo "✅ Deployment complete!"
+
+# Clean the build output
+.PHONY: frontend-clean
+frontend-clean:
+	@echo "🧹 Cleaning $(DIST_DIR)..."
+	rm -rf $(DIST_DIR)
+
 # === Docker ===
 .PHONY: docker-up
 docker-up:
@@ -61,17 +81,19 @@ docker-rebuild:
 
 # Frontend ECR build
 build-frontend-prod:
-	docker build -f frontend/Dockerfile.prod -t $(FRONTEND_IMAGE) frontend
+	docker build -f frontend/Dockerfile.prod -t $(FRONTEND_IMAGE):$(VERSION) frontend
 
 # Backend ECR build
 build-backend-prod:
-	docker build -f backend/Dockerfile.prod -t $(BACKEND_IMAGE) backend
+	docker build -f backend/Dockerfile.prod -t $(BACKEND_IMAGE):$(VERSION) backend
 
 push-frontend: build-frontend-prod
-	docker push $(FRONTEND_IMAGE)
+	docker push $(FRONTEND_IMAGE):$(VERSION)
 
 push-backend: build-backend-prod
-	docker push $(BACKEND_IMAGE)
+	docker push $(BACKEND_IMAGE):$(VERSION)
+
+
 
 # === Clean ===
 .PHONY: clean

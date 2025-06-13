@@ -1,20 +1,3 @@
-# Frontend Task
-resource "aws_ecs_task_definition" "frontend" {
-  family                   = "frontend-task"
-  network_mode            = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                     = "256"
-  memory                  = "512"
-  execution_role_arn      = aws_iam_role.ecs_task_execution.arn
-
-  container_definitions = jsonencode([{
-    name      = "frontend"
-    image     = var.frontend_image
-    portMappings = [{ containerPort = 80 }]
-    essential = true
-  }])
-}
-
 resource "aws_ecs_task_definition" "backend" {
   family                   = "backend-task"
   network_mode            = "awsvpc"
@@ -29,26 +12,6 @@ resource "aws_ecs_task_definition" "backend" {
     portMappings = [{ containerPort = 8000 }]
     essential = true
   }])
-}
-
-resource "aws_ecs_service" "frontend" {
-  name            = "frontend-service"
-  cluster         = var.ecs_cluster_id
-  task_definition = aws_ecs_task_definition.frontend.arn
-  launch_type     = "FARGATE"
-  desired_count   = 1
-
-  network_configuration {
-    subnets         = var.subnets
-    security_groups = [var.ecs_tasks_sg_id]
-    assign_public_ip = true
-  }
-
-  load_balancer {
-    target_group_arn = var.frontend_tg_arn
-    container_name   = "frontend"
-    container_port   = 80
-  }
 }
 
 resource "aws_ecs_service" "backend" {

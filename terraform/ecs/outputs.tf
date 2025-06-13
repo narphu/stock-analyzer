@@ -6,10 +6,6 @@ output "ecs_tasks_sg_id" {
   value = aws_security_group.ecs_tasks.id
 }
 
-output "frontend_service_name" {
-  value = aws_ecs_service.frontend.name
-}
-
 output "backend_service_name" {
   value = aws_ecs_service.backend.name
 }

@@ -6,6 +6,11 @@ provider "aws" {
   region = var.region
 }
 
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -84,25 +89,6 @@ resource "aws_lb" "main" {
   tags = { Name = "stock-analyzer-alb" }
 }
 
-# Frontend Target Group
-resource "aws_lb_target_group" "frontend" {
-  name        = "frontend-tg"
-  port        = 80
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = aws_vpc.main.id
-
-  health_check {
-    path                = "/"
-    protocol            = "HTTP"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-  }
-}
-
 # Backend Target Group
 resource "aws_lb_target_group" "backend" {
   name        = "backend-tg"
@@ -112,7 +98,7 @@ resource "aws_lb_target_group" "backend" {
   vpc_id      = aws_vpc.main.id
 
   health_check {
-    path                = "/predict"
+    path                = "/health"
     protocol            = "HTTP"
     matcher             = "200"
     interval            = 30
@@ -136,39 +122,4 @@ resource "aws_lb_listener" "http" {
     }
   }
 }
-
-# Listener Rule for Frontend
-resource "aws_lb_listener_rule" "frontend" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 100
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/"]
-    }
-  }
-}
-
-# Listener Rule for Backend (optional if exposed publicly)
-resource "aws_lb_listener_rule" "backend" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 101
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/predict"]
-    }
-  }
-}
-
 

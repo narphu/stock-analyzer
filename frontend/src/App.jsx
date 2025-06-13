@@ -15,10 +15,10 @@ function App() {
     setPredictions([]);
 
     try {
-      const res = await axios.post("http://localhost:8000/predict", { ticker });
+      const res = await axios.post("/api/predict", { ticker });
       setPredictions(res.data.predictions);
     } catch (err) {
-      setError(err.response?.data?.detail || "Prediction failed.");
+      setError(err.response?.data?.detail || "Failed to get Predictions.");
     } finally {
       setLoading(false);
     }
