@@ -10,12 +10,12 @@ from datetime import datetime
 from functools import lru_cache    # ⚡ Simple in-memory caching
 
 
-app = FastAPI()
+app = FastAPI(root_path="/api")  
 
 # Allow frontend access (adjust for prod)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

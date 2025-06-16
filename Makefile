@@ -3,10 +3,10 @@ PYTHON=python3
 VENV_DIR=backend/venv
 BACKEND_DIR=backend
 REQUIREMENTS=$(BACKEND_DIR)/requirements.txt
-FRONTEND_IMAGE=896924684176.dkr.ecr.us-east-2.amazonaws.com/stock-analyzer-frontend
-BACKEND_IMAGE=896924684176.dkr.ecr.us-east-2.amazonaws.com/stock-analyzer-backend
+FRONTEND_IMAGE=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-frontend
+BACKEND_IMAGE=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-backend
 VERSION=v0.0.2
-BUCKET_NAME=shrubb-ai-stock-analyzer-frontend
+BUCKET_NAME=shrubb-stock-analyzer-frontend
 DIST_DIR=frontend/dist
 
 .PHONY: venv
@@ -79,21 +79,12 @@ docker-rebuild:
 	docker-compose build
 	docker-compose up
 
-# Frontend ECR build
-build-frontend-prod:
-	docker build -f frontend/Dockerfile.prod -t $(FRONTEND_IMAGE):$(VERSION) frontend
-
 # Backend ECR build
 build-backend-prod:
 	docker build -f backend/Dockerfile.prod -t $(BACKEND_IMAGE):$(VERSION) backend
 
-push-frontend: build-frontend-prod
-	docker push $(FRONTEND_IMAGE):$(VERSION)
-
 push-backend: build-backend-prod
 	docker push $(BACKEND_IMAGE):$(VERSION)
-
-
 
 # === Clean ===
 .PHONY: clean

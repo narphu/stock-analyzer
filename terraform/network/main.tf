@@ -1,16 +1,3 @@
-variable "region" {
-  default = "us-east-2"
-}
-
-provider "aws" {
-  region = var.region
-}
-
-provider "aws" {
-  alias  = "us_east_1"
-  region = "us-east-1"
-}
-
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -108,17 +95,36 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-# HTTP Listener (or HTTPS if using TLS)
-resource "aws_lb_listener" "http" {
+# HTTPS Listener
+resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.main.arn
-  port              = 80
-  protocol          = "HTTP"
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = aws_acm_certificate.cert.arn
+
   default_action {
     type             = "fixed-response"
     fixed_response {
       content_type = "text/plain"
-      message_body = "Default backend reached"
+      message_body = "Not found"
       status_code  = "404"
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "api_routing" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 20
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*"]
     }
   }
 }

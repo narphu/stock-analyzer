@@ -11,7 +11,7 @@ output "backend_tg_arn" {
 }
 
 output "alb_listener_arn" {
-  value = aws_lb_listener.http.arn
+  value = aws_lb_listener.https.arn
 }
 
 output "frontend_acm_cert_arn" {
