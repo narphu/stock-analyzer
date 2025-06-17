@@ -21,7 +21,7 @@ module "ecs" {
 module "s3cloudfront" {
   source      = "./s3cloudfront"
   bucket_name = "shrubb-stock-analyzer-frontend"
-  acm_certificate_arn = module.network.frontend_acm_cert_arn
+  acm_certificate_arn = module.network.frontend_cert_arn
   tags = {
     Project = "StockAnalyzer"
     Env     = "prod"

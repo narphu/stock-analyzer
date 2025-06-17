@@ -10,12 +10,12 @@ from datetime import datetime
 from functools import lru_cache    # ⚡ Simple in-memory caching
 
 
-app = FastAPI(root_path="/api")  
+app = FastAPI()  
 
 # Allow frontend access (adjust for prod)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://stock-analyzer.shrubb.ai","http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,17 +28,17 @@ class PredictRequest(BaseModel):
     ticker: str
 
 @lru_cache(maxsize=100)
-def load_model(ticker: str):
-    path = os.path.join(MODEL_DIR, f"{ticker}_prophet.pkl")
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Model for {ticker} not found")
-    return joblib.load(path)
-
 def load_model(ticker: str) -> Prophet:
     path = os.path.join(MODEL_DIR, f"{ticker.upper()}_prophet.pkl")
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Model not available.")
     return joblib.load(path)
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    print(f"Incoming request: {request.url}")
+    response = await call_next(request)
+    return response
 
 @app.get("/health")
 def health_check():

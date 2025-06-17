@@ -15,7 +15,7 @@ function App() {
     setPredictions([]);
 
     try {
-      const res = await axios.post("/api/predict", { ticker });
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/predict`, { ticker });
       setPredictions(res.data.predictions);
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to get Predictions.");

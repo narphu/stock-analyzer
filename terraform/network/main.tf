@@ -96,26 +96,22 @@ resource "aws_lb_target_group" "backend" {
 }
 
 # HTTPS Listener
-resource "aws_lb_listener" "https" {
+resource "aws_lb_listener" "https_backend" {
   load_balancer_arn = aws_lb.main.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = aws_acm_certificate.cert.arn
+  certificate_arn   = aws_acm_certificate.backend_cert.arn
 
   default_action {
-    type             = "fixed-response"
-    fixed_response {
-      content_type = "text/plain"
-      message_body = "Not found"
-      status_code  = "404"
-    }
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
   }
 }
 
-resource "aws_lb_listener_rule" "api_routing" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 20
+resource "aws_lb_listener_rule" "api_host_routing" {
+  listener_arn = aws_lb_listener.https_backend.arn
+  priority     = 10
 
   action {
     type             = "forward"
@@ -123,9 +119,8 @@ resource "aws_lb_listener_rule" "api_routing" {
   }
 
   condition {
-    path_pattern {
-      values = ["/api/*"]
+    host_header {
+      values = ["api.stockanalyzer.shrubb.ai"]
     }
   }
 }
-

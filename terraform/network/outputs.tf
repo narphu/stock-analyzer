@@ -11,9 +11,14 @@ output "backend_tg_arn" {
 }
 
 output "alb_listener_arn" {
-  value = aws_lb_listener.https.arn
+  value = aws_lb_listener.https_backend.arn
 }
 
-output "frontend_acm_cert_arn" {
-  value = aws_acm_certificate.cert.arn
+# Output these ARNs for use in other modules
+output "frontend_cert_arn" {
+  value = aws_acm_certificate.frontend_cert.arn
+}
+
+output "backend_cert_arn" {
+  value = aws_acm_certificate.backend_cert.arn
 }
