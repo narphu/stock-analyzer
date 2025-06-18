@@ -13,8 +13,8 @@ jobs:
 
       - name: Upload training script and requirements to S3
         run: |
-          aws s3 cp ml/train_model.py s3://shrubb-ml-models/scripts/train_model.py
-          aws s3 cp ml/requirements.txt s3://shrubb-ml-models/scripts/requirements.txt
+          aws s3 cp ml/train_model.py s3://${{ vars.MODEL_BUCKET_NAME }}/scripts/train_model.py
+          aws s3 cp ml/requirements.txt s3://${{ vars.MODEL_BUCKET_NAME }}/scripts/requirements.txt
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -26,8 +26,8 @@ jobs:
             --region us-east-1 \
             --training-job-name sp500-train-${{ github.run_id }} \
             --algorithm-specification TrainingImage=763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.0.0-cpu-py310-ubuntu20.04,TrainingInputMode=File \
-            --input-data-config ChannelName=script,S3DataSource="{S3DataType=S3Prefix,S3Uri=s3://shrubb-ml-models/scripts/,S3DataDistributionType=FullyReplicated}" \
-            --output-data-config S3OutputPath=s3://shrubb-ml-models/models/ \
+            --input-data-config ChannelName=script,S3DataSource="{S3DataType=S3Prefix,S3Uri=s3://${{ vars.MODEL_BUCKET_NAME }}/scripts/,S3DataDistributionType=FullyReplicated}" \
+            --output-data-config S3OutputPath=s3://${{ vars.MODEL_BUCKET_NAME }}/models/ \
             --resource-config InstanceType=ml.m5.large,InstanceCount=1,VolumeSizeInGB=10 \
             --stopping-condition MaxRuntimeInSeconds=3000 \
             --role-arn arn:aws:iam::896924684176:role/shrubb-sagemaker-execution-role
