@@ -6,6 +6,7 @@ on:
 jobs:
   train-sagemaker:
     runs-on: ubuntu-latest
+    environment: prod-deploy
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
