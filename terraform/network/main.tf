@@ -120,7 +120,7 @@ resource "aws_lb_listener_rule" "api_host_routing" {
 
   condition {
     host_header {
-      values = ["api.stockanalyzer.shrubb.ai"]
+      values = ["api.stock-analyzer.shrubb.ai"]
     }
   }
 }
