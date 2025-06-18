@@ -21,8 +21,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BASE_DIR = os.path.dirname(__file__)
-MODEL_DIR = os.path.join(BASE_DIR, "models")
+BASE_DIR = os.path.dirname(os.path.dirname(__file__)) 
+MODEL_DIR = os.path.join(BASE_DIR, "ml/models")
 
 class PredictRequest(BaseModel):
     ticker: str

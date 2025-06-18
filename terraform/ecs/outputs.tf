@@ -9,3 +9,7 @@ output "ecs_tasks_sg_id" {
 output "backend_service_name" {
   value = aws_ecs_service.backend.name
 }
+
+output "ecs_task_execution_role_name" {
+  value = aws_iam_role.ecs_task_execution.name
+}

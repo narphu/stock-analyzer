@@ -28,3 +28,9 @@ module "s3cloudfront" {
   }
 }
 
+module "ml" {
+  source      = "./ml"
+  bucket_name = "shrubb-ai-ml-models"
+  ecs_task_execution_role_name = module.ecs.ecs_task_execution_role_name
+}
+
