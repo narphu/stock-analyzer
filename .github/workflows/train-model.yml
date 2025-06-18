@@ -25,7 +25,7 @@ jobs:
           aws sagemaker create-training-job \
             --region us-east-1 \
             --training-job-name sp500-train-${{ github.run_id }} \
-            --algorithm-specification TrainingImage=763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.0.0-cpu-py310-ubuntu20.04,TrainingInputMode=File \
+             --training-image TrainingImage=683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.3-1-cpu-py310,TrainingInputMode=File \
             --input-data-config '[
               {
                 "ChannelName": "script",
