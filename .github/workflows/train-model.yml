@@ -32,7 +32,7 @@ jobs:
                   "DataSource": {
                     "S3DataSource": {
                       "S3DataType": "S3Prefix",
-                      "S3Uri": "s3://shrubb-ml-models/scripts/",
+                      "S3Uri": "s3://${{ vars.MODEL_BUCKET_NAME }}/scripts/",
                       "S3DataDistributionType": "FullyReplicated"
                     }
                   },
