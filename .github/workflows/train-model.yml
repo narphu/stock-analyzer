@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: 3.10.18
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -59,6 +59,13 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Wait for training to complete
+        run: |
+          JOB_NAME="sp500-train-${{ github.run_id }}"
+          echo "⏳ Waiting for SageMaker job to finish..."
+          aws sagemaker wait training-job-completed-or-stopped --training-job-name "$JOB_NAME" --region us-east-1
+          echo "✅ Training job completed"
+
       - name: Unpack model.tar.gz and upload to S3
         env:
           AWS_REGION: us-east-1
