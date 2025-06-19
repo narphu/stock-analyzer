@@ -65,6 +65,9 @@ jobs:
           echo "⏳ Waiting for SageMaker job to finish..."
           aws sagemaker wait training-job-completed-or-stopped --training-job-name "$JOB_NAME" --region us-east-1
           echo "✅ Training job completed"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Unpack model.tar.gz and upload to S3
         env:
