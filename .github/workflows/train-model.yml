@@ -25,7 +25,7 @@ jobs:
           aws sagemaker create-training-job \
             --region us-east-1 \
             --training-job-name sp500-train-${{ github.run_id }} \
-            --algorithm-specification TrainingImage=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-shrubb-ai-custom-trainer:latest,TrainingInputMode=File \
+            --algorithm-specification TrainingImage=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-shrubb-ai-custom-trainer:${{ vars.TRAIN_IMAGE_VERSION }},TrainingInputMode=File \
             --input-data-config '[]' \
             --output-data-config S3OutputPath=s3://${{ vars.MODEL_BUCKET_NAME }}/models/ \
             --resource-config InstanceType=ml.m5.large,InstanceCount=1,VolumeSizeInGB=10 \
