@@ -7,14 +7,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Prophet and other Python libs
-RUN pip install --no-cache-dir \
-    prophet \
-    pandas \
-    yfinance \
-    joblib \
-    beautifulsoup4 \
-    requests \
-    sagemaker-training
+# Add requirements and install them
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Add training script
 COPY train_model.py /opt/ml/code/train_model.py

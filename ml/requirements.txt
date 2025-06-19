@@ -7,3 +7,5 @@ prophet>=1.1
 beautifulsoup4
 lxml
 requests
+plotly
+sagemaker-training
