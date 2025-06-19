@@ -9,3 +9,5 @@ joblib
 prophet>=1.1
 beautifulsoup4
 lxml
+pydantic
+boto3
