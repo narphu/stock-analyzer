@@ -13,8 +13,6 @@ jobs:
   train-sagemaker:
     runs-on: ubuntu-latest
     environment: prod-deploy
-    env:
-      TRAIN_IMAGE_VERSION: 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
