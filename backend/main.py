@@ -8,6 +8,7 @@ import os
 from prophet import Prophet
 from datetime import datetime
 from functools import lru_cache    # ⚡ Simple in-memory caching
+from model_loader import load_model
 
 
 app = FastAPI()  
@@ -46,34 +47,39 @@ def health_check():
 
 @app.post("/predict")
 def predict(req: PredictRequest):
+    try: 
+        try:
+            model = load_model(req.ticker.upper())
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="Model not found")
 
-    try:
-        model = load_model(req.ticker.upper())
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Model not found")
+        today = pd.Timestamp.now().normalize()
 
-    today = pd.Timestamp.now().normalize()
+        # Generate forecast
+        future = model.make_future_dataframe(periods=30)
+        forecast = model.predict(future)
 
-    # Generate forecast
-    future = model.make_future_dataframe(periods=30)
-    forecast = model.predict(future)
+        # Only keep future rows
+        forecast = forecast[forecast["ds"] >= today].copy()
+        forecast["days_ahead"] = (forecast["ds"] - today).dt.days
 
-    # Only keep future rows
-    forecast = forecast[forecast["ds"] >= today].copy()
-    forecast["days_ahead"] = (forecast["ds"] - today).dt.days
+        # Return selected future horizons
+        desired_days = [1, 2, 7, 10, 30]
+        result = forecast[forecast["days_ahead"].isin(desired_days)]
+        
 
-    # Return selected future horizons
-    desired_days = [1, 2, 7, 10, 30]
-    result = forecast[forecast["days_ahead"].isin(desired_days)]
+        return {
+            "ticker":  req.ticker.upper(),
+            "predictions": [
+                {
+                    "days": int(row.days_ahead),
+                    "date": row.ds.strftime("%Y-%m-%d"),
+                    "price": round(row.yhat, 2)
+                }
+                for row in result.itertuples()
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return {
-        "ticker":  req.ticker.upper(),
-        "predictions": [
-            {
-                "days": int(row.days_ahead),
-                "date": row.ds.strftime("%Y-%m-%d"),
-                "price": round(row.yhat, 2)
-            }
-            for row in result.itertuples()
-        ]
-    }
+    

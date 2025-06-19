@@ -7,6 +7,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+# When running locally build models locally
+ENV USE_LOCAL_MODELS true
+
 # Copy the rest of your backend code
 COPY . .
 
