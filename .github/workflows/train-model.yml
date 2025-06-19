@@ -2,15 +2,23 @@ name: Train S&P 500 Models via SageMaker
 
 on:
   workflow_dispatch:
+    inputs:
+      TRAIN_IMAGE_VERSION:
+        description: 'Training image version'
+        required: true
+        type: string
+        default: v0.0.3
+
 
 jobs:
   train-sagemaker:
     runs-on: ubuntu-latest
     environment: prod-deploy
+    env:
+      TRAIN_IMAGE_VERSION: 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
       - name: Upload training script and requirements to S3
         run: |
           aws s3 cp ml/train_model.py s3://${{ vars.MODEL_BUCKET_NAME }}/scripts/train_model.py
@@ -25,7 +33,7 @@ jobs:
           aws sagemaker create-training-job \
             --region us-east-1 \
             --training-job-name sp500-train-${{ github.run_id }} \
-            --algorithm-specification TrainingImage=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-shrubb-ai-custom-trainer:${{ vars.TRAIN_IMAGE_VERSION }},TrainingInputMode=File \
+            --algorithm-specification TrainingImage=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-shrubb-ai-custom-trainer: ${{ github.event.inputs.TRAIN_IMAGE_VERSION }},TrainingInputMode=File \
             --input-data-config '[
                 {
                   "ChannelName": "script",
