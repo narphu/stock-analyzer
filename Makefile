@@ -3,8 +3,10 @@ PYTHON=python3
 VENV_DIR=backend/venv
 BACKEND_DIR=backend
 REQUIREMENTS=$(BACKEND_DIR)/requirements.txt
-FRONTEND_IMAGE=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-frontend
-BACKEND_IMAGE=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-backend
+ACCOUNT_ID:=896924684176
+ECR_URI:=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+FRONTEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-frontend
+BACKEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-backend
 VERSION=v0.0.2
 BUCKET_NAME=shrubb-stock-analyzer-frontend
 DIST_DIR=frontend/dist
@@ -85,6 +87,17 @@ build-backend-prod:
 
 push-backend: build-backend-prod
 	docker push $(BACKEND_IMAGE):$(VERSION)
+
+# Custom Sagemaker AI Image
+# Target: Build the ML training image
+ml-image-build:
+	docker build -f ml/Dockerfile -t stock-analyzer-shrubb-ai-custom-trainer:$(VERSION) ml
+
+# Target: Tag and push the image to ECR
+ml-image-push: ml-image-build
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ECR_URI)
+	docker tag stock-analyzer-shrubb-ai-custom-trainer:$(VERSION) $(ECR_URI)/stock-analyzer-shrubb-ai-custom-trainer:$(VERSION)
+	docker push $(ECR_URI)/stock-analyzer-shrubb-ai-custom-trainer:$(VERSION)
 
 # === Clean ===
 .PHONY: clean
