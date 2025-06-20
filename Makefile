@@ -19,7 +19,7 @@ venv:
 	$(VENV_DIR)/bin/pip install --upgrade pip
 	$(VENV_DIR)/bin/pip install -r $(REQUIREMENTS)
 
-.PHONY: dev
+.PHONY: backend-dev
 dev: venv
 	PYTHONPATH=. $(VENV_DIR)/bin/uvicorn backend.main:app --reload
 
@@ -31,6 +31,10 @@ deps:
 .PHONY: freeze
 freeze:
 	$(VENV_DIR)/bin/pip freeze > $(REQUIREMENTS)
+
+.PHONY: test-backend
+test-backend:
+	PYTHONPATH=./backend $(VENV_DIR)/bin/pytest backend/tests
 
 # === Models ===
 .PHONY: train-models
@@ -83,6 +87,7 @@ docker-rebuild:
 	docker-compose up
 
 # Backend ECR build
+
 build-backend-prod:
 	docker build -f backend/Dockerfile.prod -t $(BACKEND_IMAGE):$(BACKEND_VERSION) backend
 

@@ -11,3 +11,5 @@ beautifulsoup4
 lxml
 pydantic
 boto3
+pytest
+httpx

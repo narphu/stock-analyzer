@@ -10,7 +10,8 @@ from datetime import datetime
 from functools import lru_cache    # ⚡ Simple in-memory caching
 from model_loader import load_model
 import traceback
-
+import yfinance as yf
+from fastapi import Query
 
 
 app = FastAPI()  
@@ -76,6 +77,34 @@ def predict(req: PredictRequest):
         }
     except Exception as e:
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@lru_cache(maxsize=200)
+def fetch_stock_metrics(ticker: str) -> dict:
+    stock = yf.Ticker(ticker)
+    info = stock.info
+
+    return {
+        "ticker": ticker,
+        "name": info.get("longName"),
+        "price": info.get("currentPrice"),
+        "market_cap": info.get("marketCap"),
+        "pe_ratio": info.get("trailingPE"),
+        "eps": info.get("trailingEps"),
+        "volume": info.get("volume"),
+        "dividend_yield": info.get("dividendYield"),
+        "sector": info.get("sector"),
+        "industry": info.get("industry"),
+        "52_week_high": info.get("fiftyTwoWeekHigh"),
+        "52_week_low": info.get("fiftyTwoWeekLow"),
+    }
+
+@app.get("/metrics")
+def get_stock_metrics(ticker: str = Query(..., description="Stock ticker symbol")):
+    try:
+        return fetch_stock_metrics(ticker.upper())
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     
