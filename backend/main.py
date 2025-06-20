@@ -9,6 +9,8 @@ from prophet import Prophet
 from datetime import datetime
 from functools import lru_cache    # ⚡ Simple in-memory caching
 from model_loader import load_model
+import traceback
+
 
 
 app = FastAPI()  
@@ -27,13 +29,6 @@ MODEL_DIR = os.path.join(BASE_DIR, "ml/models")
 
 class PredictRequest(BaseModel):
     ticker: str
-
-@lru_cache(maxsize=100)
-def load_model(ticker: str) -> Prophet:
-    path = os.path.join(MODEL_DIR, f"{ticker.upper()}_prophet.pkl")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Model not available.")
-    return joblib.load(path)
 
 @app.middleware("http")
 async def log_requests(request, call_next):
@@ -80,6 +75,7 @@ def predict(req: PredictRequest):
             ]
         }
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
     
