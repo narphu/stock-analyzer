@@ -4,10 +4,12 @@ VENV_DIR=backend/venv
 BACKEND_DIR=backend
 REQUIREMENTS=$(BACKEND_DIR)/requirements.txt
 ACCOUNT_ID:=896924684176
-ECR_URI:=$(ACCOUNT_ID).dkr.ecr.us-east-1.amazonaws.com
+AWS_REGION=us-east-1
+ECR_URI:=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 FRONTEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-frontend
 BACKEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-backend
-VERSION=v0.0.2
+BACKEND_VERSION=v0.0.3
+MODEL_VERSION=v0.0.3
 BUCKET_NAME=shrubb-stock-analyzer-frontend
 DIST_DIR=frontend/dist
 
@@ -33,8 +35,7 @@ freeze:
 # === Models ===
 .PHONY: train-models
 train-models:
-	PYTHONPATH=. $(VENV_DIR)/bin/python backend/train_model.py
-
+	PYTHONPATH=. MODEL_OUTPUT_DIR=backend/models $(VENV_DIR)/bin/python ml/train_model.py
 
 # === React Frontend ===
 .PHONY: frontend
@@ -83,21 +84,26 @@ docker-rebuild:
 
 # Backend ECR build
 build-backend-prod:
-	docker build -f backend/Dockerfile.prod -t $(BACKEND_IMAGE):$(VERSION) backend
+	docker build -f backend/Dockerfile.prod -t $(BACKEND_IMAGE):$(BACKEND_VERSION) backend
 
 push-backend: build-backend-prod
-	docker push $(BACKEND_IMAGE):$(VERSION)
+	docker push $(BACKEND_IMAGE):$(BACKEND_VERSION)
+
+# Terraform Apply
+tf-apply:
+	cd terraform && ./terraform init
+	cd terraform && ./terraform apply -var backend_version="$(BACKEND_VERSION)"
 
 # Custom Sagemaker AI Image
 # Target: Build the ML training image
 ml-image-build:
-	docker build -f ml/Dockerfile -t stock-analyzer-shrubb-ai-custom-trainer:$(VERSION) ml
+	docker build -f ml/Dockerfile -t stock-analyzer-shrubb-ai-custom-trainer:$(MODEL_VERSION) ml
 
 # Target: Tag and push the image to ECR
 ml-image-push: ml-image-build
 	aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(ECR_URI)
-	docker tag stock-analyzer-shrubb-ai-custom-trainer:$(VERSION) $(ECR_URI)/stock-analyzer-shrubb-ai-custom-trainer:$(VERSION)
-	docker push $(ECR_URI)/stock-analyzer-shrubb-ai-custom-trainer:$(VERSION)
+	docker tag stock-analyzer-shrubb-ai-custom-trainer:$(MODEL_VERSION) $(ECR_URI)/stock-analyzer-shrubb-ai-custom-trainer:$(MODEL_VERSION)
+	docker push $(ECR_URI)/stock-analyzer-shrubb-ai-custom-trainer:$(MODEL_VERSION)
 
 # === Clean ===
 .PHONY: clean

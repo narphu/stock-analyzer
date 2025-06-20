@@ -11,8 +11,8 @@ from functools import lru_cache    # ⚡ Simple in-memory caching
 USE_LOCAL = os.getenv("USE_LOCAL_MODELS", "false").lower() == "true"
 if USE_LOCAL:
     # Use ./backend/models relative to project root
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    MODEL_DIR = os.getenv("MODEL_OUTPUT_DIR", os.path.join(BASE_DIR, "backend", "models"))
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
+    MODEL_DIR = os.getenv("MODEL_OUTPUT_DIR", os.path.join(BASE_DIR, "models"))
 else:
     # SageMaker expects model artifacts here
     MODEL_DIR = "/opt/ml/model"

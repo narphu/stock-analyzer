@@ -38,7 +38,7 @@ jobs:
           aws sagemaker create-training-job \
             --region us-east-1 \
             --training-job-name sp500-train-${{ github.run_id }} \
-            --algorithm-specification TrainingImage=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-shrubb-ai-custom-trainer: ${{ github.event.inputs.TRAIN_IMAGE_VERSION }},TrainingInputMode=File \
+            --algorithm-specification TrainingImage=896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-shrubb-ai-custom-trainer:${{ github.event.inputs.TRAIN_IMAGE_VERSION }},TrainingInputMode=File \
             --input-data-config '[
                 {
                   "ChannelName": "script",
@@ -65,6 +65,9 @@ jobs:
           echo "⏳ Waiting for SageMaker job to finish..."
           aws sagemaker wait training-job-completed-or-stopped --training-job-name "$JOB_NAME" --region us-east-1
           echo "✅ Training job completed"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Unpack model.tar.gz and upload to S3
         env:

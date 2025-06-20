@@ -13,7 +13,7 @@ module "ecs" {
   public_subnets     = module.network.public_subnets
   ecs_cluster_id     = module.ecs.ecs_cluster_id
   ecs_tasks_sg_id    = module.ecs.ecs_tasks_sg_id
-  backend_image      = "896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-backend:v0.0.2"
+  backend_image      = "896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-backend:${var.backend_version}"
   backend_tg_arn     = module.network.backend_tg_arn
   subnets            = module.network.public_subnets
 }
