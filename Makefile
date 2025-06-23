@@ -20,8 +20,8 @@ venv:
 	$(VENV_DIR)/bin/pip install -r $(REQUIREMENTS)
 
 .PHONY: backend-dev
-dev: venv
-	PYTHONPATH=. $(VENV_DIR)/bin/uvicorn backend.main:app --reload
+backend-dev: venv
+	PYTHONPATH=./backend $(VENV_DIR)/bin/uvicorn backend.main:app --reload
 
 .PHONY: deps
 deps:
