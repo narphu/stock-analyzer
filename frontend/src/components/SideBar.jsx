@@ -1,19 +1,15 @@
-import { HomeIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { Box, VStack, Text } from "@chakra-ui/react";
 
-export default function SideBar() {
+export default function Sidebar() {
   return (
-    <div className="w-64 h-screen bg-gray-900 text-white p-4">
-      <h1 className="text-2xl font-bold mb-6">📊 Stock Analyzer</h1>
-      <nav className="space-y-4">
-        <a href="#" className="flex items-center gap-2 text-gray-300 hover:text-white">
-          <HomeIcon className="h-5 w-5" />
-          Dashboard
-        </a>
-        <a href="#" className="flex items-center gap-2 text-gray-300 hover:text-white">
-          <ChartBarIcon className="h-5 w-5" />
-          Trends
-        </a>
-      </nav>
-    </div>
+    <Box w="250px" bg="white" p={6} boxShadow="md">
+      <VStack align="start" spacing={4}>
+        <Text fontWeight="bold">Dashboard</Text>
+        <Text color="gray.600">Watchlist</Text>
+        <Text color="gray.600">Settings</Text>
+        {/* Add more dummy menu items */}
+      </VStack>
+    </Box>
   );
 }
+

@@ -8,7 +8,7 @@ AWS_REGION=us-east-1
 ECR_URI:=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 FRONTEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-frontend
 BACKEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-backend
-BACKEND_VERSION=v0.0.3
+BACKEND_VERSION=v0.0.4
 MODEL_VERSION=v0.0.3
 BUCKET_NAME=shrubb-stock-analyzer-frontend
 DIST_DIR=frontend/dist
@@ -20,8 +20,8 @@ venv:
 	$(VENV_DIR)/bin/pip install -r $(REQUIREMENTS)
 
 .PHONY: backend-dev
-dev: venv
-	PYTHONPATH=. $(VENV_DIR)/bin/uvicorn backend.main:app --reload
+backend-dev: venv
+	PYTHONPATH=./backend $(VENV_DIR)/bin/uvicorn backend.main:app --reload
 
 .PHONY: deps
 deps:
