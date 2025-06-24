@@ -12,7 +12,7 @@ ECR_URI:=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 FRONTEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-frontend
 BACKEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-backend
 BACKEND_VERSION=v0.0.4
-MODEL_VERSION=v0.0.3
+MODEL_VERSION=v0.0.4
 BUCKET_NAME=shrubb-stock-analyzer-frontend
 DIST_DIR=frontend/dist
 

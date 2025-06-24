@@ -7,7 +7,7 @@ on:
         description: 'Training image version'
         required: true
         type: string
-        default: v0.0.3
+        default: v0.0.4
 
 jobs:
   train-sagemaker:
@@ -77,3 +77,14 @@ jobs:
           SM_JOB_NAME: sp500-train-${{ github.run_id }}
         run: |
           python ml/model_unpacker.py
+          echo "📊 Accuracy results:"
+          for model in prophet arima xgboost lstm; do
+            ACC_FILE="ml/models/$model/accuracy.json"
+            if [ -f "$ACC_FILE" ]; then
+              echo "🔍 $model accuracy:"
+              cat "$ACC_FILE"
+              echo ""
+            else
+              echo "⚠️ No accuracy.json found for $model"
+            fi
+          done
