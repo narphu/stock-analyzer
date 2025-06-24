@@ -1,16 +1,16 @@
 # sagemaker_model_unpacker.py
-# This script extracts individual .pkl model files from a SageMaker training job output (.tar.gz)
-# and uploads them to a flat S3 structure so the FastAPI backend can load them directly
+# Extracts model.tar.gz from SageMaker output and uploads individual models by type to S3
 
 import boto3
 import os
 import tarfile
 import tempfile
+import json
 
 BUCKET = "shrubb-ai-ml-models"
-JOB_NAME = os.getenv("SM_JOB_NAME")  # Or pass directly
+JOB_NAME = os.getenv("SM_JOB_NAME")  # e.g., stock-analyzer-20240623
 SOURCE_KEY = f"models/{JOB_NAME}/output/model.tar.gz"
-DEST_PREFIX = "models/"  # final destination for .pkl files
+DEST_PREFIX = "models/"  # Base path in S3
 
 s3 = boto3.client("s3")
 
@@ -28,14 +28,26 @@ def extract_and_upload():
             tar.extractall(path=extract_dir)
 
         for file in os.listdir(extract_dir):
-            if file.endswith("_prophet.pkl"):
-                local_path = os.path.join(extract_dir, file)
-                s3_path = f"{DEST_PREFIX}{file}"
+            local_path = os.path.join(extract_dir, file)
 
-                print(f"⬆️ Uploading {file} to s3://{BUCKET}/{s3_path}")
-                s3.upload_file(local_path, BUCKET, s3_path)
+            # Upload models by filename convention
+            if file.endswith((".pkl", ".h5")) and "_" in file:
+                try:
+                    ticker, model_ext = file.rsplit("_", 1)
+                    model_name = model_ext.replace(".pkl", "").replace(".h5", "")
+                    dest_key = f"{DEST_PREFIX}{model_name}/{ticker}.{model_ext.split('.')[-1]}"
+                    print(f"⬆️ Uploading {file} to s3://{BUCKET}/{dest_key}")
+                    s3.upload_file(local_path, BUCKET, dest_key)
+                except Exception as e:
+                    print(f"⚠️ Skipping {file}: {e}")
 
-        print("✅ Done extracting and uploading Prophet model files.")
+            # Also upload any accuracy.json files found
+            elif file == "accuracy.json":
+                s3_key = f"{DEST_PREFIX}/{model_name}/accuracy.json"
+                print(f"📤 Uploading per-ticker accuracy for {model_name} to s3://{BUCKET}/{s3_key}")
+                s3.upload_file(file, BUCKET, s3_key)
+
+        print("✅ Done extracting and uploading model files.")
 
 if __name__ == "__main__":
     extract_and_upload()

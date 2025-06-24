@@ -9,3 +9,6 @@ lxml
 requests
 plotly
 sagemaker-training
+tensorflow
+xgboost
+statsmodels

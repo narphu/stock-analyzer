@@ -1,8 +1,11 @@
 # === Python Backend ===
 PYTHON=python3
-VENV_DIR=backend/venv
 BACKEND_DIR=backend
+ML_DIR=ml
+VENV_DIR=$(BACKEND_DIR)/venv
+ML_VENV_DIR=$(ML_DIR)/venv
 REQUIREMENTS=$(BACKEND_DIR)/requirements.txt
+ML_REQUIREMENTS=$(ML_DIR)/requirements.txt
 ACCOUNT_ID:=896924684176
 AWS_REGION=us-east-1
 ECR_URI:=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
@@ -39,7 +42,10 @@ test-backend:
 # === Models ===
 .PHONY: train-models
 train-models:
-	PYTHONPATH=. MODEL_OUTPUT_DIR=backend/models $(VENV_DIR)/bin/python ml/train_model.py
+	$(PYTHON) -m venv $(ML_VENV_DIR)
+	$(ML_VENV_DIR)/bin/pip install --upgrade pip
+	$(ML_VENV_DIR)/bin/pip install -r $(ML_REQUIREMENTS)
+	PYTHONPATH=./ml USE_LOCAL_MODELS=true $(ML_VENV_DIR)/bin/python ml/train_model.py
 
 # === React Frontend ===
 .PHONY: frontend
