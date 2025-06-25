@@ -31,10 +31,10 @@ def extract_and_upload():
             local_path = os.path.join(extract_dir, file)
 
             # Upload models by filename convention
-            if file.endswith((".pkl", ".h5")) and "_" in file:
+            if file.endswith((".pkl", ".keras")) and "_" in file:
                 try:
                     ticker, model_ext = file.rsplit("_", 1)
-                    model_name = model_ext.replace(".pkl", "").replace(".h5", "")
+                    model_name = model_ext.replace(".pkl", "").replace(".keras","")
                     dest_key = f"{DEST_PREFIX}{model_name}/{ticker}.{model_ext.split('.')[-1]}"
                     print(f"⬆️ Uploading {file} to s3://{BUCKET}/{dest_key}")
                     s3.upload_file(local_path, BUCKET, dest_key)

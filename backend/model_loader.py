@@ -21,7 +21,13 @@ s3 = boto3.client("s3")
 # === Model path utils ===
 
 def get_model_filename(ticker: str, model: str) -> str:
-    return f"{ticker.upper()}.pkl" if model != "lstm" else f"{ticker.upper()}.h5"
+    ticker = ticker.upper()
+    if model == "lstm":
+        return f"{ticker}.keras"
+    elif model in {"prophet", "arima", "xgboost"}:
+        return f"{ticker}.pkl"
+    else:
+        raise ValueError(f"Unsupported model type: {model}")
 
 def get_local_model_path(ticker: str, model: str) -> str:
     return os.path.join(LOCAL_MODEL_DIR, model, get_model_filename(ticker, model))

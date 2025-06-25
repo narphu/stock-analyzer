@@ -3,7 +3,7 @@ import joblib
 import yfinance as yf
 import pandas as pd
 from prophet import Prophet
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
 from functools import lru_cache
@@ -57,7 +57,7 @@ def prepare_yfinance_data(ticker: str, period: str = "3y", interval: str = "1d")
 def save_model(model, path, is_keras=False):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if is_keras:
-        model.save(path)
+        model.save(path.replace(".h5", ".keras")) 
     else:
         joblib.dump(model, path)
 
@@ -102,7 +102,7 @@ def train_xgboost(ticker, df):
     print(f"✅ XGBoost Model for {ticker} trained.")
 
 def train_lstm(ticker, df):
-    path = os.path.join(MODEL_DIR, "lstm", f"{ticker}.h5")
+    path = os.path.join(MODEL_DIR, "lstm", f"{ticker}.keras")
     if os.path.exists(path) or len(df) < 100:
         return
     scaler = MinMaxScaler()
@@ -126,7 +126,9 @@ def train_lstm(ticker, df):
     accuracy_tracker["lstm"][ticker] = round(acc, 4)
     print(f"✅ LSTM Model for {ticker} trained.")
 
-def train(ticker):
+# We split the model training into light and heavy models to optimize CPU usage when using smaller instancess
+# as ml.m5large
+def train_light_models(ticker):
     try:
         print(f"🔄 Training models for {ticker}")
         df = prepare_yfinance_data(ticker)
@@ -136,22 +138,43 @@ def train(ticker):
         train_prophet(ticker, df)
         train_arima(ticker, df)
         train_xgboost(ticker, df)
+        print(f"✅ Completed training: {ticker}")
+    except Exception as e:
+        print(f"❌ Failed {ticker}: {e}")
+
+def train_heavy_models(ticker):
+    try:
+        print(f"🔄 Training models for {ticker}")
+        df = prepare_yfinance_data(ticker)
+        if df.empty:
+            print(f"❌ No data for {ticker}")
+            return
         train_lstm(ticker, df)
         print(f"✅ Completed training: {ticker}")
     except Exception as e:
         print(f"❌ Failed {ticker}: {e}")
 
 def train_all_sp500():
-    tickers = get_sp500_tickers()
+    tickers = get_sp500_tickers(
     print(f"📈 Found {len(tickers)} S&P 500 tickers")
+    # This maximizes CPU usage while avoiding deadlocks and mutex corruption from TensorFlow under concurrency.
+    # Light models (thread-safe)
     with ThreadPoolExecutor(max_workers=4) as executor:
-        executor.map(train, tickers)
+        executor.map(train_light_models, tickers)
+
+    # Heavy models (TensorFlow)
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        executor.map(train_heavy_models, tickers)
+    
     # Save accuracy.json per model
     for model, accs in accuracy_tracker.items():
-        path = os.path.join(MODEL_DIR, model, "accuracy.json")
-        with open(path, "w") as f:
-            json.dump(accs, f, indent=2)
-        print(f"📈 Saved accuracy for {model} → {path}")
+        try:
+            path = os.path.join(MODEL_DIR, model, "accuracy.json")
+            with open(path, "w") as f:
+                json.dump(accs, f, indent=2)
+            print(f"📈 Saved accuracy for {model} → {path}")
+        except Exception as e:
+            print(f"❌ Failed to save accuracy: {e}")
 
 if __name__ == "__main__":
     train_all_sp500()
