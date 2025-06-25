@@ -155,7 +155,7 @@ def train_heavy_models(ticker):
         print(f"❌ Failed {ticker}: {e}")
 
 def train_all_sp500():
-    tickers = get_sp500_tickers(
+    tickers = get_sp500_tickers()
     print(f"📈 Found {len(tickers)} S&P 500 tickers")
     # This maximizes CPU usage while avoiding deadlocks and mutex corruption from TensorFlow under concurrency.
     # Light models (thread-safe)
@@ -170,11 +170,12 @@ def train_all_sp500():
     for model, accs in accuracy_tracker.items():
         try:
             path = os.path.join(MODEL_DIR, model, "accuracy.json")
+            print(f"Accuracy for model: {model} -> {accs}" )
             with open(path, "w") as f:
                 json.dump(accs, f, indent=2)
             print(f"📈 Saved accuracy for {model} → {path}")
         except Exception as e:
-            print(f"❌ Failed to save accuracy: {e}")
+            print(f"❌ Failed to save accuracy.json: {e}")
 
 if __name__ == "__main__":
     train_all_sp500()
