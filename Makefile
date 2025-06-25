@@ -24,7 +24,7 @@ venv:
 
 .PHONY: backend-dev
 backend-dev: venv
-	PYTHONPATH=./backend $(VENV_DIR)/bin/uvicorn backend.main:app --reload
+	PYTHONPATH=./backend USE_LOCAL_MODELS=true $(VENV_DIR)/bin/uvicorn backend.main:app --reload
 
 .PHONY: deps
 deps:

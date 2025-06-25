@@ -10,7 +10,7 @@ import yfinance as yf
 import tensorflow as tf  # Only required if using LSTM
 
 USE_LOCAL = os.getenv("USE_LOCAL_MODELS", "false").lower() == "true"
-LOCAL_MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
+LOCAL_MODEL_DIR = os.path.join(os.path.dirname(__file__), "../ml/models")
 S3_BUCKET = "shrubb-ai-ml-models"
 S3_PREFIX = "models"
 S3_CACHE_DIR = "/tmp/shrubb_models"

@@ -13,3 +13,8 @@ pydantic
 boto3
 pytest
 httpx
+plotly
+sagemaker-training
+tensorflow
+xgboost
+statsmodels
