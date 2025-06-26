@@ -32,26 +32,26 @@ def extract_and_upload():
             if not os.path.isdir(model_dir):
                 continue
         
-        print(f"📁 Processing model: {model_name}")
+            print(f"📁 Processing model: {model_name}")
 
 
-        for file in os.listdir(model_dir):
-            local_path = os.path.join(model_dir, file)
+            for file in os.listdir(model_dir):
+                local_path = os.path.join(model_dir, file)
 
-            # Upload models by filename convention
-            if file.endswith((".pkl", ".keras")):
-                try:
-                    s3_key = f"{DEST_PREFIX}/{model_name}/{file}"
-                    print(f"⬆️ Uploading {file} to s3://{BUCKET}/{s3_key}")
-                    s3.upload_file(local_path, BUCKET, s3_key)
-                except Exception as e:
-                    print(f"⚠️ Skipping {file}: {e}")
+                # Upload models by filename convention
+                if file.endswith((".pkl", ".keras")):
+                    try:
+                        s3_key = f"{DEST_PREFIX}/{model_name}/{file}"
+                        print(f"⬆️ Uploading {file} to s3://{BUCKET}/{s3_key}")
+                        s3.upload_file(local_path, BUCKET, s3_key)
+                    except Exception as e:
+                        print(f"⚠️ Skipping {file}: {e}")
 
-            # Also upload any accuracy.json files found
-            elif file == "accuracy.json":
-                s3_key = f"{DEST_PREFIX}/{model_name}/accuracy.json"
-                print(f"📤 Uploading per-ticker accuracy for {model_name} to s3://{BUCKET}/{s3_key}")
-                s3.upload_file(file, BUCKET, s3_key)
+                # Also upload any accuracy.json files found
+                elif file == "accuracy.json":
+                    s3_key = f"{DEST_PREFIX}/{model_name}/accuracy.json"
+                    print(f"📤 Uploading per-ticker accuracy for {model_name} to s3://{BUCKET}/{s3_key}")
+                    s3.upload_file(file, BUCKET, s3_key)
 
         print("✅ Done extracting and uploading model files.")
 
