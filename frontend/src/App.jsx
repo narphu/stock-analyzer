@@ -19,6 +19,7 @@ import Sidebar from "./components/SideBar";
 function App() {
   const [predictions, setPredictions] = useState([]);
   const [metrics, setMetrics] = useState([]);
+  const [accuracy, setAccuracy] = useState("")
   const [selectedTicker, setSelectedTicker] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +34,8 @@ function App() {
     setPredictions([]);
     setMetrics([]);
     setSelectedTicker(ticker);
+    setAccuracy();
+    
 
     try {
       const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/predict`, {
@@ -40,6 +43,7 @@ function App() {
         model: selectedModel,
       });
       setPredictions(res.data.predictions);
+      setAccuracy(res.data.accuracy);
 
       const metricsRes = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/metrics?ticker=${ticker}`
@@ -142,6 +146,7 @@ function App() {
                       metrics={metrics}
                       ticker={selectedTicker}
                       selectedModel={selectedModel}
+                      accuracy={accuracy}
                     />
                   ) : (
                     <Text color="gray.500" textAlign="center" mt={4}>

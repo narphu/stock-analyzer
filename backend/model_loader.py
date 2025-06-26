@@ -79,7 +79,7 @@ def get_accuracy_for_ticker(ticker: str, model: str = "prophet") -> Optional[flo
                 s3_key = f"{S3_PREFIX}/{model}/accuracy.json"
                 print(f"⬇️ Downloading accuracy file: s3://{S3_BUCKET}/{s3_key}")
                 s3.download_file(S3_BUCKET, s3_key, acc_path)
-            except Exception:
+            except Exception as e:
                 return None
         else:
             return None
@@ -88,8 +88,8 @@ def get_accuracy_for_ticker(ticker: str, model: str = "prophet") -> Optional[flo
         with open(acc_path) as f:
             data = json.load(f)
             return round(data.get(ticker, 0.0), 4)
-    except Exception:
-        return None
+    except Exception as e:
+        return e
 
 def prepare_yfinance_data(ticker: str, period: str = "3y", interval: str = "1d") -> pd.DataFrame:
     df = yf.download(ticker, period=period, interval=interval, auto_adjust=False)

@@ -1,37 +1,19 @@
-import { useEffect, useState } from "react";
-import {
-  Box,
-  Text,
-  SimpleGrid,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  useColorModeValue,
-  Select,
-  Flex,
-  Badge,
-  Heading,
-} from "@chakra-ui/react";
+import { Box, Text, SimpleGrid, Stat, StatLabel, StatNumber, useColorModeValue, Flex, Badge, Heading } from "@chakra-ui/react";
 import { motion } from "framer-motion";
-import axios from "axios";
+import { useMemo } from "react";
 
 const MotionBox = motion(Box);
 
-export default function Dashboard({ predictions, metrics, ticker, selectedModel }) {
-  const [accuracy, setAccuracy] = useState(null);
+export default function Dashboard({ predictions, metrics, ticker, selectedModel, accuracy }) {
   const highlight = useColorModeValue("teal.600", "teal.300");
   const cardBg = useColorModeValue("white", "gray.800");
   const statBg = useColorModeValue("gray.50", "gray.700");
   const borderColor = useColorModeValue("gray.100", "gray.600");
 
-  useEffect(() => {
-    if (!ticker) return;
-    axios
-      .get(`${import.meta.env.VITE_API_BASE_URL}/accuracy?ticker=${ticker}`)
-      .then((res) => setAccuracy(res.data))
-      .catch(() => setAccuracy(null));
-  }, [ticker]);
+  const accuracyValue = useMemo(() => {
+    if (!accuracy) return null;
+    return accuracy;
+  }, [accuracy]);
 
   return (
     <Box mt={10}>
@@ -40,9 +22,9 @@ export default function Dashboard({ predictions, metrics, ticker, selectedModel 
           {ticker} Forecast
         </Heading>
 
-        {accuracy && accuracy[selectedModel] !== undefined && (
+        {accuracyValue !== undefined && (
           <Badge fontSize="md" colorScheme="green" variant="subtle" px={3} py={1} borderRadius="md">
-            Accuracy ({selectedModel.toUpperCase()}): {accuracy[selectedModel]}
+            Accuracy ({selectedModel.toUpperCase()}): {accuracyValue}
           </Badge>
         )}
       </Flex>

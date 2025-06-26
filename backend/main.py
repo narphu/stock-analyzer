@@ -89,7 +89,7 @@ def predict(req: PredictRequest):
                 {
                     "days": d,
                     "date": (today + pd.Timedelta(days=d)).strftime("%Y-%m-%d"),
-                    "price": round(forecast[d - 1], 2)
+                    "price": round(forecast.iloc[d - 1], 2)
                 }
                 for d in desired_days if d <= len(forecast)
             ]
@@ -105,7 +105,8 @@ def predict(req: PredictRequest):
                 predictions.append({
                     "days": d,
                     "date": (today + pd.Timedelta(days=d)).strftime("%Y-%m-%d"),
-                    "price": round(pred_price, 2)
+                    "price": round(float(pred_price), 2)
+
                 })
 
         elif model_name == "lstm":
