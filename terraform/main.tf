@@ -16,6 +16,8 @@ module "ecs" {
   backend_image      = "896924684176.dkr.ecr.us-east-1.amazonaws.com/stock-analyzer-backend:${var.backend_version}"
   backend_tg_arn     = module.network.backend_tg_arn
   subnets            = module.network.public_subnets
+  cluster_name       = "stock-analyzer-cluster"
+  service_name       = "backend-service"
 }
 
 module "s3cloudfront" {
