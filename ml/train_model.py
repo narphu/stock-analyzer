@@ -19,6 +19,7 @@ from collections import defaultdict
 import json
 import numpy as np
 import warnings
+import gc
 
 
 warnings.filterwarnings("ignore")
@@ -136,8 +137,11 @@ def train_light_models(ticker):
             print(f"❌ No data for {ticker}")
             return
         train_prophet(ticker, df)
+        gc.collect()
         train_arima(ticker, df)
+        gc.collect()
         train_xgboost(ticker, df)
+        gc.collect()
         print(f"✅ Completed training: {ticker}")
     except Exception as e:
         print(f"❌ Failed {ticker}: {e}")
@@ -150,6 +154,7 @@ def train_heavy_models(ticker):
             print(f"❌ No data for {ticker}")
             return
         train_lstm(ticker, df)
+        gc.collect()
         print(f"✅ Completed training: {ticker}")
     except Exception as e:
         print(f"❌ Failed {ticker}: {e}")
@@ -159,7 +164,7 @@ def train_all_sp500():
     print(f"📈 Found {len(tickers)} S&P 500 tickers")
     # This maximizes CPU usage while avoiding deadlocks and mutex corruption from TensorFlow under concurrency.
     # Light models (thread-safe)
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         executor.map(train_light_models, tickers)
 
     # Heavy models (TensorFlow)
