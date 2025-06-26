@@ -67,6 +67,11 @@ resource "aws_iam_role_policy" "sagemaker_policy" {
   })
 }
 
+resource "aws_cloudwatch_log_group" "sagemaker_logs" {
+  name              = "/aws/sagemaker/TrainingJobs"
+  retention_in_days = 1
+}
+
 # IAM Policy for ECS to Download from S3
 resource "aws_iam_policy" "ecs_model_read_policy" {
   name = "shrubb-ecs-read-models"
