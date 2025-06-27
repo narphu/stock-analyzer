@@ -54,7 +54,7 @@ jobs:
             ]' \
             --output-data-config S3OutputPath=s3://${{ vars.MODEL_BUCKET_NAME }}/models/ \
             --resource-config InstanceType=ml.m5.xlarge,InstanceCount=1,VolumeSizeInGB=10 \
-            --stopping-condition MaxRuntimeInSeconds=4500 \
+            --stopping-condition MaxRuntimeInSeconds=7200 \
             --role-arn arn:aws:iam::896924684176:role/shrubb-ai-sagemaker-execution-role \
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
