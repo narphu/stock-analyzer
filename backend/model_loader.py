@@ -4,11 +4,14 @@ import joblib
 import json
 import tempfile
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, List, Dict
 import pandas as pd
 import yfinance as yf
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf  # Only required if using LSTM
 
+# Config
 USE_LOCAL = os.getenv("USE_LOCAL_MODELS", "false").lower() == "true"
 LOCAL_MODEL_DIR = os.path.join(os.path.dirname(__file__), "../ml/models")
 S3_BUCKET = "shrubb-ai-ml-models"
@@ -29,8 +32,10 @@ def get_model_filename(ticker: str, model: str) -> str:
     else:
         raise ValueError(f"Unsupported model type: {model}")
 
+
 def get_local_model_path(ticker: str, model: str) -> str:
     return os.path.join(LOCAL_MODEL_DIR, model, get_model_filename(ticker, model))
+
 
 def get_cached_s3_model_path(ticker: str, model: str) -> str:
     return os.path.join(S3_CACHE_DIR, model, get_model_filename(ticker, model))
@@ -70,7 +75,11 @@ def load_model(ticker: str, model: str = "prophet"):
 
 def get_accuracy_for_ticker(ticker: str, model: str = "prophet") -> Optional[float]:
     ticker = ticker.upper()
-    acc_path = os.path.join(LOCAL_MODEL_DIR if USE_LOCAL else S3_CACHE_DIR, model, "accuracy.json")
+    acc_path = os.path.join(
+        LOCAL_MODEL_DIR if USE_LOCAL else S3_CACHE_DIR,
+        model,
+        "accuracy.json"
+    )
 
     if not os.path.exists(acc_path):
         if not USE_LOCAL:
@@ -79,7 +88,7 @@ def get_accuracy_for_ticker(ticker: str, model: str = "prophet") -> Optional[flo
                 s3_key = f"{S3_PREFIX}/{model}/accuracy.json"
                 print(f"⬇️ Downloading accuracy file: s3://{S3_BUCKET}/{s3_key}")
                 s3.download_file(S3_BUCKET, s3_key, acc_path)
-            except Exception as e:
+            except Exception:
                 return None
         else:
             return None
@@ -88,8 +97,10 @@ def get_accuracy_for_ticker(ticker: str, model: str = "prophet") -> Optional[flo
         with open(acc_path) as f:
             data = json.load(f)
             return round(data.get(ticker, 0.0), 4)
-    except Exception as e:
-        return e
+    except Exception:
+        return None
+
+# === Data prep ===
 
 def prepare_yfinance_data(ticker: str, period: str = "3y", interval: str = "1d") -> pd.DataFrame:
     df = yf.download(ticker, period=period, interval=interval, auto_adjust=False)
@@ -99,5 +110,75 @@ def prepare_yfinance_data(ticker: str, period: str = "3y", interval: str = "1d")
         return pd.DataFrame()
     df = df[["Close"]].dropna()
     df["ds"] = df.index
-    df = df[["ds", "Close"]].rename(columns={"Close": "y"})
-    return df
+    return df[["ds", "Close"]].rename(columns={"Close": "y"})
+
+# === Unified prediction interface ===
+
+def predict_price(ticker: str, model: str, days: int) -> float:
+    """
+    Predict price for `ticker` using `model` over `days` horizon.
+    Returns a single float.
+    """
+    ticker = ticker.upper()
+    mdl = load_model(ticker, model)
+
+    df = prepare_yfinance_data(ticker)
+    today = pd.Timestamp.now().normalize()
+
+    if model == "prophet":
+        future = mdl.make_future_dataframe(periods=days)
+        forecast = mdl.predict(future)
+        row = forecast[forecast["ds"] >= today].iloc[days-1]
+        return float(row.yhat)
+
+    if model == "arima":
+        fc = mdl.forecast(steps=days)
+        return float(fc.iloc[days - 1])
+
+    if model == "xgboost":
+        df_ts = df.copy()
+        df_ts["timestamp"] = df_ts["ds"].astype("int64") // 10**9
+        last_ts = df_ts["timestamp"].max()
+        future_ts = np.array([[last_ts + days * 86400]])
+        return float(mdl.predict(future_ts)[0])
+
+    if model == "lstm":
+        window = 10
+        scaler = MinMaxScaler()
+        scaled = scaler.fit_transform(df[["y"]])
+        seq = scaled[-window:].reshape(1, window, 1)
+        for _ in range(days):
+            p = mdl.predict(seq, verbose=0)[0][0]
+            seq = np.roll(seq, -1)
+            seq[0, -1, 0] = p
+        return float(scaler.inverse_transform([[p]])[0][0])
+
+    raise ValueError(f"Unsupported model {model}")
+# === List available tickers ===
+
+@lru_cache(maxsize=8)
+def list_available_tickers(model: str = "prophet") -> List[str]:
+    """
+    Returns tickers with model files, from LOCAL_MODEL_DIR or S3 under S3_PREFIX/model/.
+    """
+    model = model.lower()
+    ext = ".keras" if model == "lstm" else ".pkl"
+
+    if USE_LOCAL:
+        dirpath = os.path.join(LOCAL_MODEL_DIR, model)
+        try:
+            return [os.path.splitext(f)[0] for f in os.listdir(dirpath) if f.endswith(ext)]
+        except FileNotFoundError:
+            return []
+
+    # S3 fallback
+    prefix = f"{S3_PREFIX}/{model}/"
+    tickers = []
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            name = os.path.basename(obj["Key"])
+            if name.endswith(ext):
+                tickers.append(os.path.splitext(name)[0])
+    return tickers
+
