@@ -7,7 +7,7 @@ on:
         description: 'Training image version'
         required: true
         type: string
-        default: v0.0.3
+        default: v0.0.4
 
 jobs:
   train-sagemaker:
@@ -53,9 +53,9 @@ jobs:
                 }
             ]' \
             --output-data-config S3OutputPath=s3://${{ vars.MODEL_BUCKET_NAME }}/models/ \
-            --resource-config InstanceType=ml.m5.large,InstanceCount=1,VolumeSizeInGB=10 \
-            --stopping-condition MaxRuntimeInSeconds=3000 \
-            --role-arn arn:aws:iam::896924684176:role/shrubb-ai-sagemaker-execution-role
+            --resource-config InstanceType=ml.m5.xlarge,InstanceCount=1,VolumeSizeInGB=10 \
+            --stopping-condition MaxRuntimeInSeconds=7200 \
+            --role-arn arn:aws:iam::896924684176:role/shrubb-ai-sagemaker-execution-role \
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -77,3 +77,14 @@ jobs:
           SM_JOB_NAME: sp500-train-${{ github.run_id }}
         run: |
           python ml/model_unpacker.py
+          echo "📊 Accuracy results:"
+          for model in prophet arima xgboost lstm; do
+            ACC_FILE="ml/models/$model/accuracy.json"
+            if [ -f "$ACC_FILE" ]; then
+              echo "🔍 $model accuracy:"
+              cat "$ACC_FILE"
+              echo ""
+            else
+              echo "⚠️ No accuracy.json found for $model"
+            fi
+          done
