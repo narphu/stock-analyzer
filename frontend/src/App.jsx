@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+// src/App.jsx
+import React, { useRef, useState } from "react";
 import axios from "axios";
 import {
   Box,
@@ -10,23 +11,38 @@ import {
   VStack,
   Select,
 } from "@chakra-ui/react";
-import { motion } from "framer-motion";
-import TickerSearch from "./components/TickerSearch";
-import Dashboard from "./components/Dashboard";
+import { AnimatePresence, motion } from "framer-motion";
+
+import HeroLandingPage from "./components/HeroLandingPage";
 import Navbar from "./components/NavBar";
 import Sidebar from "./components/SideBar";
+import TickerSearch from "./components/TickerSearch";
+import Dashboard from "./components/Dashboard";
 
-function App() {
+export default function App() {
+  const [heroVisible, setHeroVisible] = useState(true);
+
+  // your existing state
   const [predictions, setPredictions] = useState([]);
   const [metrics, setMetrics] = useState([]);
-  const [accuracy, setAccuracy] = useState("")
+  const [accuracy, setAccuracy] = useState("");
   const [selectedTicker, setSelectedTicker] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedModel, setSelectedModel] = useState("prophet");
+
   const dashboardRef = useRef(null);
 
   const modelOptions = ["prophet", "arima", "xgboost", "lstm"];
+
+  // 1) Dismiss the hero with an exit animation…
+  const handleCTAClick = () => {
+    setHeroVisible(false);
+    // 2) …then scroll into view once it's gone
+    setTimeout(() => {
+      dashboardRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 600);
+  };
 
   const fetchPredictions = async (ticker) => {
     setLoading(true);
@@ -34,14 +50,13 @@ function App() {
     setPredictions([]);
     setMetrics([]);
     setSelectedTicker(ticker);
-    setAccuracy();
-    
+    setAccuracy("");
 
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/predict`, {
-        ticker,
-        model: selectedModel,
-      });
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/predict`,
+        { ticker, model: selectedModel }
+      );
       setPredictions(res.data.predictions);
       setAccuracy(res.data.accuracy);
 
@@ -61,31 +76,41 @@ function App() {
   };
 
   return (
-    <Flex direction="column" minH="100vh" position="relative" fontFamily="Inter, sans-serif">
-      <Navbar />
+    <Flex direction="column" minH="100vh" position="relative">
+      {/* ———————————————————— */}
+      {/* HERO OVERLAY (full-screen) */}
+      <AnimatePresence>
+        {heroVisible && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, y: -50 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              zIndex: 9999,
+            }}
+          >
+            <HeroLandingPage onCTAClick={handleCTAClick} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* 💫 Gradient Animated Background */}
-      <Box
-        position="absolute"
-        top="0"
-        left="0"
-        right="0"
-        h="400px"
-        zIndex={-1}
-        bgGradient="linear(to-br, teal.100, teal.300, blue.100)"
-        opacity={0.3}
-        filter="blur(80px)"
-        rounded="full"
-      />
+      {/* ———————————————————— */}
+      {/* NOW that hero is gone, show the real site chrome */}
+      {!heroVisible && <Navbar />}
 
       <Flex flex="1">
-        <Sidebar />
+        {!heroVisible && <Sidebar />}
 
-        {/* 💡 Animated main card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, delay: heroVisible ? 0.6 : 0 }}
           style={{ flex: 1 }}
         >
           <Box p={{ base: 4, md: 8 }}>
@@ -96,7 +121,6 @@ function App() {
                   textAlign="center"
                   color="teal.600"
                   fontWeight="bold"
-                  fontFamily="Inter, sans-serif"
                 >
                   Stock Analyzer Dashboard
                 </Heading>
@@ -162,5 +186,3 @@ function App() {
     </Flex>
   );
 }
-
-export default App;
