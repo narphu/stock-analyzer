@@ -8,6 +8,8 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
+import Features from "./Features";
+
 
 // Wrap Chakra’s VStack with motion to animate its children
 const MotionVStack = motion(VStack);
@@ -21,7 +23,7 @@ export default function HeroLandingPage({ onCTAClick }) {
     <Box
       as="section"
       w="100%"
-      minH="70vh"
+      minH="100vh"
       bgGradient="linear(to-br, teal.50, white)"
       display="flex"
       alignItems="center"
@@ -53,6 +55,7 @@ export default function HeroLandingPage({ onCTAClick }) {
           Start Forecasting
         </Button>
       </MotionVStack>
+      <Features></Features>
     </Box>
   );
 }
