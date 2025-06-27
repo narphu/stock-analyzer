@@ -102,10 +102,18 @@ def train_xgboost(ticker, df):
     accuracy_tracker["xgboost"][ticker] = round(acc, 4)
     print(f"✅ XGBoost Model for {ticker} trained.")
 
+#  Handles division-by-zero gracefully.
+def safe_mape(y_true, y_pred):
+    mask = y_true != 0
+    if not np.any(mask):
+        return float('inf')
+    return np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask]))
+
 def train_lstm(ticker, df):
     path = os.path.join(MODEL_DIR, "lstm", f"{ticker}.keras")
     if os.path.exists(path) or len(df) < 100:
         return
+
     scaler = MinMaxScaler()
     scaled = scaler.fit_transform(df[["y"]])
     X, y = [], []
@@ -116,13 +124,27 @@ def train_lstm(ticker, df):
     X = np.array(X).reshape(-1, window, 1)
     y = np.array(y)
 
+    # Split into train/val for better generalization
+    split_idx = int(len(X) * 0.8)
+    X_train, X_val = X[:split_idx], X[split_idx:]
+    y_train, y_val = y[:split_idx], y[split_idx:]
+
     model = Sequential()
     model.add(LSTM(50, activation="relu", input_shape=(window, 1)))
-    model.add(Dense(1))
+    model.add(Dense(3))
     model.compile(optimizer="adam", loss="mse")
-    model.fit(X, y, epochs=20, verbose=0, validation_split=0.2, callbacks=[EarlyStopping(patience=3, monitor="val_loss")])
-    preds = model.predict(X).flatten()
-    acc = 1 - mean_absolute_percentage_error(y, preds)
+
+    model.fit(
+        X_train, y_train,
+        epochs=20,
+        verbose=0,
+        validation_data=(X_val, y_val),
+        callbacks=[EarlyStopping(patience=3, monitor="val_loss")]
+    )
+
+    preds = model.predict(X_val).flatten()
+    acc = 1 - safe_mape(y_val, preds)
+
     save_model(model, path, is_keras=True)
     accuracy_tracker["lstm"][ticker] = round(acc, 4)
     print(f"✅ LSTM Model for {ticker} trained.")

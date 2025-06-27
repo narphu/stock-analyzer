@@ -51,7 +51,7 @@ def extract_and_upload():
                 elif file == "accuracy.json":
                     s3_key = f"{DEST_PREFIX}/{model_name}/accuracy.json"
                     print(f"📤 Uploading per-ticker accuracy for {model_name} to s3://{BUCKET}/{s3_key}")
-                    s3.upload_file(file, BUCKET, s3_key)
+                    s3.upload_file(local_path, BUCKET, s3_key)
 
         print("✅ Done extracting and uploading model files.")
 
