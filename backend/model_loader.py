@@ -17,6 +17,7 @@ LOCAL_MODEL_DIR = os.path.join(os.path.dirname(__file__), "../ml/models")
 S3_BUCKET = "shrubb-ai-ml-models"
 S3_PREFIX = "models"
 S3_CACHE_DIR = "/tmp/shrubb_models"
+EXPLORE_KEY="analytics/gainers_losers.json"
 os.makedirs(S3_CACHE_DIR, exist_ok=True)
 
 s3 = boto3.client("s3")
@@ -128,7 +129,9 @@ def predict_price(ticker: str, model: str, days: int) -> float:
     if model == "prophet":
         future = mdl.make_future_dataframe(periods=days)
         forecast = mdl.predict(future)
-        row = forecast[forecast["ds"] >= today].iloc[days-1]
+        future_rows = forecast[forecast["ds"] >= today]
+        target_index = min(days - 1, len(future_rows) - 1)
+        row = future_rows.iloc[target_index]
         return float(row.yhat)
 
     if model == "arima":
@@ -182,3 +185,15 @@ def list_available_tickers(model: str = "prophet") -> List[str]:
                 tickers.append(os.path.splitext(name)[0])
     return tickers
 
+# Explore data precomputed. Only available on S3.
+def load_cached_explore_data():
+    if USE_LOCAL:
+        print(f"Explore unavailable locally")
+        return {"gainers": [], "losers": []}
+    try:
+        obj = s3.get_object(Bucket=S3_BUCKET, Key=EXPLORE_KEY)
+        content = obj["Body"].read().decode("utf-8")
+        return json.loads(content)
+    except Exception as e:
+        print(f"⚠️ Failed to load cached explore data: {e}")
+        return {"gainers": [], "losers": []}

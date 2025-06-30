@@ -16,7 +16,8 @@ from model_loader import (
     predict_price,
     get_accuracy_for_ticker,
     prepare_yfinance_data,
-    list_available_tickers
+    list_available_tickers,
+    load_cached_explore_data
 )
 from data import SP500_TICKERS, SP500_METADATA
 
@@ -163,50 +164,16 @@ async def _fetch_scores(
             continue
     return results
 
-# Explore endpoints using DRY predict_price and list_available_tickers
+
 @app.get("/explore/top-gainers", response_model=List[Dict])
-async def top_gainers(
-    days: int = Query(30, ge=1),
-    limit: int = Query(10, ge=1, le=100),
-    model: str = Query("prophet", regex="^(prophet|arima|xgboost|lstm)$"),
-    sector: Optional[str] = Query(None),
-):
-    if model not in MODEL_OPTIONS:
-        raise HTTPException(status_code=400, detail="Unknown model")
-
-    available = set(list_available_tickers(model))
-    candidates = [
-        t for t in SP500_TICKERS
-        if t in available and (sector is None or SP500_METADATA.get(t, {}).get("sector") == sector)
-    ]
-    if not candidates:
-        return []
-
-    scores = await _fetch_scores(candidates, days, model)
-    top = sorted(scores, key=lambda x: x["forecast_pct_change"], reverse=True)[:limit]
-    return top
+async def top_gainers(limit: int = Query(10, ge=1, le=100)):
+    data = load_cached_explore_data()
+    return data.get("gainers", [])[:limit]
 
 @app.get("/explore/top-losers", response_model=List[Dict])
-async def top_losers(
-    days: int = Query(30, ge=1),
-    limit: int = Query(10, ge=1, le=100),
-    model: str = Query("prophet", regex="^(prophet|arima|xgboost|lstm)$"),
-    sector: Optional[str] = Query(None),
-):
-    if model not in MODEL_OPTIONS:
-        raise HTTPException(status_code=400, detail="Unknown model")
-
-    available = set(list_available_tickers(model))
-    candidates = [
-        t for t in SP500_TICKERS
-        if t in available and (sector is None or SP500_METADATA.get(t, {}).get("sector") == sector)
-    ]
-    if not candidates:
-        return []
-
-    scores = await _fetch_scores(candidates, days, model)
-    bottom = sorted(scores, key=lambda x: x["forecast_pct_change"])[:limit]
-    return bottom
+async def top_losers(limit: int = Query(10, ge=1, le=100)):
+    data = load_cached_explore_data()
+    return data.get("losers", [])[:limit]
 
 # Compare models DRY
 @app.get("/compare/{ticker}", response_model=Dict[str, Dict])
