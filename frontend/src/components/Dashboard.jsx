@@ -50,7 +50,7 @@ export default function Dashboard({ predictions, metrics, ticker, selectedModel,
             py={1}
             borderRadius="md"
           >
-            Accuracy ({selectedModel.toUpperCase()}): {accuracyValue}
+            Accuracy ({selectedModel.toUpperCase()}): {(accuracyValue * 100).toFixed(2)}%
           </Badge>
         )}
       </Flex>
