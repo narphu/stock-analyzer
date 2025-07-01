@@ -75,19 +75,29 @@ export default function Explore() {
       whileHover={{ scale: 1.05 }}
       transition={{ duration: 0.2 }}
       cursor="pointer"
-      onClick={() => navigate(`/Dashboard.jsx`)}
+      onClick={() =>
+        navigate("/", {
+          state: {
+            ticker: item.ticker,
+            triggerPrediction: true,
+          },
+        })
+      }
     >
-      <Flex justify="space-between" align="center" mb={1}>
+      <Flex justify="space-between">
         <Text fontSize="lg" fontWeight="bold">
           {item.ticker}
         </Text>
         <Badge colorScheme={isGainer ? "green" : "red"}>
-          {item.percent_change > 0 ? "+" : ""}
-          {item.percent_change}%
+          {item.forecast_pct_change > 0 ? "+" : ""}
+          {item.forecast_pct_change}%
         </Badge>
       </Flex>
       <Text fontSize="sm" color="gray.500">
-        Now: ${item.current_price} → ${item.predicted_price}
+        {item.name}
+      </Text>
+      <Text mt={2} fontSize="sm">
+        Price: ${item.price}
       </Text>
     </MotionBox>
   );

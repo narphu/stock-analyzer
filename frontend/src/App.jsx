@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect  } from "react";
 import axios from "axios";
 import {
   Box,
@@ -27,9 +27,10 @@ import CompareModels from "./components/CompareModels";
 import Explore from "./components/Explore";
 import About from "./components/About";
 
-
 function MainLayout() {
   const location = useLocation();
+  const tickerFromExplore = location.state?.ticker;
+  const shouldTriggerPrediction = location.state?.triggerPrediction;
   const [heroVisible, setHeroVisible] = useState(true);
   const isHome = location.pathname === "/";
 
@@ -45,7 +46,7 @@ function MainLayout() {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const isMobile = useBreakpointValue({ base: true, md: false });
-
+  
   const handleCTAClick = () => {
     setHeroVisible(false);
     setTimeout(() => {
@@ -77,12 +78,20 @@ function MainLayout() {
       setTimeout(() => {
         dashboardRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 300);
+
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to fetch data.");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (tickerFromExplore && shouldTriggerPrediction) {
+      fetchPredictions(tickerFromExplore);
+    }
+  }, [tickerFromExplore, shouldTriggerPrediction]);
+
 
   return (
     <Flex direction="column" minH="100vh" position="relative">
