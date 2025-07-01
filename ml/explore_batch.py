@@ -1,116 +1,168 @@
-import os
-import json
-import boto3
-import joblib
-import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta
-from prophet import Prophet
-from statsmodels.tsa.arima.model import ARIMAResults
-from keras.models import load_model
 import numpy as np
+from prophet import Prophet
+from sklearn.preprocessing import MinMaxScaler
+from statsmodels.tsa.arima.model import ARIMAResults
+import xgboost as xgb
+from keras.models import load_model as load_lstm_model
+import joblib
+import os
+import boto3
+import tempfile
+import yfinance as yf
+from train_model import get_sp500_tickers
 
 MODEL_DIR = "models"
-BUCKET = "shrubb-ai-ml-models"
-DEST_KEY = "analytics/gainers_losers.json"
-S3 = boto3.client("s3")
-SUPPORTED_MODELS = ["prophet", "arima", "xgboost", "lstm"]
 LOOKAHEAD_DAYS = 30
 TOP_N = 5
-
-def compute_volatility(df):
-    df["returns"] = df["Close"].pct_change()
-    return round(df["returns"].std() * 100, 2)  # percentage
-
-
-def load_all_models():
-    model_cache = {}
-    for model in SUPPORTED_MODELS:
-        model_cache[model] = {}
-        local_dir = os.path.join(MODEL_DIR, model)
-        os.makedirs(local_dir, exist_ok=True)
-        response = S3.list_objects_v2(Bucket=BUCKET, Prefix=f"models/{model}/")
-        for obj in response.get("Contents", []):
-            if obj["Key"].endswith((".pkl", ".keras")):
-                filename = obj["Key"].split("/")[-1]
-                ticker = filename.split(".")[0]
-                local_path = os.path.join(local_dir, filename)
-                S3.download_file(BUCKET, obj["Key"], local_path)
-                if model == "prophet":
-                    model_cache[model][ticker] = joblib.load(local_path)
-                elif model == "arima":
-                    model_cache[model][ticker] = ARIMAResults.load(local_path)
-                elif model == "xgboost":
-                    import xgboost as xgb
-                    model_cache[model][ticker] = xgb.Booster()
-                    model_cache[model][ticker].load_model(local_path)
-                elif model == "lstm":
-                    model_cache[model][ticker] = load_model(local_path)
-    return model_cache
+MODEL_NAMES = ["prophet", "arima", "xgboost", "lstm"]
+BUCKET = "shrubb-ai-ml-models"
+DEST_KEY = "analytics/gainers_losers.json"
+SP500_TICKERS = get_sp500_tickers()
 
 
-def forecast_average_price(ticker, models):
-    df = yf.download(ticker, period="6mo", progress=False)
-    df = df.rename(columns={"Date": "ds", "Close": "y"})
-    df = df[["y"]].reset_index()
-    df.rename(columns={"Date": "ds"}, inplace=True)
-    today = df.ds.max()
-    future_date = today + timedelta(days=LOOKAHEAD_DAYS)
+s3 = boto3.client("s3")
+
+def prepare_yfinance_data(ticker: str):
+    df = yf.download(ticker, period="1y", interval="1d")
+    df = df.reset_index()[["Date", "Close"]].rename(columns={"Date": "ds", "Close": "y"})
+    df["ds"] = pd.to_datetime(df["ds"])
+    return df
+
+
+def download_model(ticker: str, model: str) -> str:
+    ext = ".h5" if model == "lstm" else ".pkl"
+    key = f"models/{model}/{ticker}{ext}"
+    local_path = os.path.join(MODEL_DIR, model, f"{ticker}{ext}")
+
+    os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
+    if not os.path.exists(local_path):
+        print(f"⬇️ Downloading model from s3://{BUCKET}/{key}")
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            s3.download_file(BUCKET, key, tmp.name)
+            os.rename(tmp.name, local_path)
+
+    return local_path
+
+
+def load_model(ticker: str, model: str):
+    path = download_model(ticker, model)
+
+    if model == "prophet":
+        return joblib.load(path)
+    elif model == "arima":
+        return ARIMAResults.load(path)
+    elif model == "xgboost":
+        return joblib.load(path)
+    elif model == "lstm":
+        return load_lstm_model(path)
+    else:
+        raise ValueError(f"Unsupported model {model}")
+
+
+def predict_price(ticker: str, model: str, days: int) -> float:
+    ticker = ticker.upper()
+    mdl = load_model(ticker, model)
+    df = prepare_yfinance_data(ticker)
+    today = pd.Timestamp.now().normalize()
+
+    if model == "prophet":
+        future = mdl.make_future_dataframe(periods=days)
+        forecast = mdl.predict(future)
+        future_rows = forecast[forecast["ds"] >= today]
+        target_index = min(days - 1, len(future_rows) - 1)
+        return float(future_rows.iloc[target_index]["yhat"])
+
+    elif model == "arima":
+        forecast = mdl.forecast(steps=days)
+        return float(forecast.iloc[days - 1])
+
+    elif model == "xgboost":
+        df_ts = df.copy()
+        df_ts["timestamp"] = df_ts["ds"].astype("int64") // 10**9
+        last_ts = df_ts["timestamp"].max()
+        future_ts = np.array([[last_ts + days * 86400]])
+        return float(mdl.predict(future_ts)[0])
+
+    elif model == "lstm":
+        window = 10
+        scaler = MinMaxScaler()
+        scaled = scaler.fit_transform(df[["y"]])
+        seq = scaled[-window:].reshape(1, window, 1)
+
+        for _ in range(days):
+            p = mdl.predict(seq, verbose=0)[0][0]
+            seq = np.roll(seq, -1)
+            seq[0, -1, 0] = p
+
+        return float(scaler.inverse_transform([[p]])[0][0])
+
+    else:
+        raise ValueError(f"Unsupported model {model}")
     
-    forecasts = []
-    for model_name, model in models.items():
-        try:
-            if model_name == "prophet":
-                future = model.make_future_dataframe(periods=LOOKAHEAD_DAYS)
-                forecast = model.predict(future)
-                pred = forecast[forecast.ds == future_date]["yhat"].values[0]
-            elif model_name == "arima":
-                pred = model.forecast(LOOKAHEAD_DAYS)[-1]
-            elif model_name == "xgboost":
-                ts = int(pd.Timestamp(today).timestamp()) + LOOKAHEAD_DAYS * 86400
-                dmatrix = xgb.DMatrix(np.array([[ts]]))
-                pred = model.predict(dmatrix)[0]
-            elif model_name == "lstm":
-                from sklearn.preprocessing import MinMaxScaler
-                scaled = MinMaxScaler().fit_transform(df[["y"]])
-                X = [scaled[-10:].reshape(1, 10, 1)]
-                pred = scaled[-1][0] * model.predict(np.array(X)).flatten()[0]  # Reverse scaling dummy
-            forecasts.append(float(pred))
-        except Exception as e:
-            print(f"⚠️ {ticker} {model_name} prediction failed: {e}")
-    return np.mean(forecasts) if forecasts else None
+
+def get_current_price(ticker: str) -> float:
+    try:
+        data = yf.download(ticker, period="7d", interval="1d")
+        return data["Close"][-1] if not data.empty else None
+    except Exception as e:
+        print(f"⚠️ Failed to get current price for {ticker}: {e}")
+        return None
 
 
-def generate_gainers_losers():
-    model_cache = load_all_models()
-    tickers = set.intersection(*[set(models.keys()) for models in model_cache.values()])
+def compute_gainers_losers():
     results = []
 
-    for ticker in tickers:
-        models = {m: model_cache[m][ticker] for m in SUPPORTED_MODELS if ticker in model_cache[m]}
-        avg_pred_price = forecast_average_price(ticker, models)
-        if avg_pred_price is None:
-            continue
-        current_price = yf.Ticker(ticker).history(period="1d")["Close"].iloc[-1]
-        change = ((avg_pred_price - current_price) / current_price) * 100
-        results.append({"ticker": ticker, "change": round(change, 2)})
+    for ticker in SP500_TICKERS:
+        try:
+            current_price = get_current_price(ticker)
+            if not current_price:
+                continue
 
-    results = sorted(results, key=lambda x: x["change"], reverse=True)
-    gainers = results[:TOP_N]
-    losers = results[-TOP_N:][::-1]
+            preds = []
+            for model in MODEL_NAMES:
+                try:
+                    pred = predict_price(ticker, model, LOOKAHEAD_DAYS)
+                    preds.append(pred)
+                except Exception as e:
+                    print(f"⚠️ Model {model} failed for {ticker}: {e}")
 
-    payload = {
-        "generated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            if not preds:
+                continue
+
+            avg_pred = sum(preds) / len(preds)
+            percent_change = ((avg_pred - current_price) / current_price) * 100
+
+            results.append({
+                "ticker": ticker,
+                "current_price": round(current_price, 2),
+                "predicted_price": round(avg_pred, 2),
+                "percent_change": round(percent_change, 2),
+            })
+
+        except Exception as e:
+            print(f"⚠️ Error processing {ticker}: {e}")
+
+    gainers = sorted(results, key=lambda x: x["percent_change"], reverse=True)[:TOP_N]
+    losers = sorted(results, key=lambda x: x["percent_change"])[:TOP_N]
+
+    output = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "models_used": MODEL_NAMES,
         "top_gainers": gainers,
         "top_losers": losers,
     }
 
-    with open("gainers_losers.json", "w") as f:
-        json.dump(payload, f, indent=2)
+    s3.put_object(
+        Bucket=BUCKET,
+        Key=DEST_KEY,
+        Body=json.dumps(output),
+        ContentType="application/json"
+    )
 
-    S3.upload_file("gainers_losers.json", BUCKET, DEST_KEY)
-    print("✅ gainers_losers.json uploaded to S3")
+    print(f"✅ Uploaded analytics to s3://{BUCKET}/{DEST_KEY}")
 
 
 if __name__ == "__main__":
-    generate_gainers_losers()
+    compute_gainers_losers()
