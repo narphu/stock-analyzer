@@ -25,9 +25,7 @@ TOP_N = 5
 MODEL_NAMES = ["prophet", "arima", "xgboost", "lstm"]
 BUCKET = "shrubb-ai-ml-models"
 DEST_KEY = "analytics/gainers_losers.json"
-#SP500_TICKERS = get_sp500_tickers()
-SP500_TICKERS=["AAPL"]
-
+SP500_TICKERS = get_sp500_tickers()
 
 s3 = boto3.client("s3")
 
