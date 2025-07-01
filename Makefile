@@ -11,8 +11,10 @@ AWS_REGION=us-east-1
 ECR_URI:=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 FRONTEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-frontend
 BACKEND_IMAGE=$(ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/stock-analyzer-backend
-BACKEND_VERSION=v0.0.8
+FRONTEND_VERSION=v0.0.2
+BACKEND_VERSION=v0.0.9
 MODEL_VERSION=v0.0.4
+CLOUDFRONT_DISTRIBUTION_ID=E3R6TRBTP0FQ33
 BUCKET_NAME=shrubb-stock-analyzer-frontend
 DIST_DIR=frontend/dist
 
@@ -63,8 +65,13 @@ frontend-build:
 # Upload dist/ folder to S3
 .PHONY: frontend-upload
 frontend-upload:
+	cd frontend && echo "{\"version\": \"${FRONTEND_VERSION}\", \"timestamp\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"}" > version.json
 	@echo "🚀 Uploading to S3 bucket $(BUCKET_NAME)..."
 	aws s3 sync $(DIST_DIR)/ s3://$(BUCKET_NAME) --delete
+	aws s3 cp frontend/version.json s3://$(BUCKET_NAME)/version.json --content-type application/json
+	aws cloudfront create-invalidation \
+            --distribution-id $(CLOUDFRONT_DISTRIBUTION_ID) \
+            --paths "/version.json"
 
 # Combined build + upload
 .PHONY: frontend-deploy

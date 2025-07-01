@@ -1,0 +1,39 @@
+name: Deploy Stock Analyzer
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Release version"
+                required: true
+    push:
+        branches:
+        - 'release/**' 
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::896924684176:role/nprabhu
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set version env var
+        run: echo "BACKEND_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+
+      - name: Deploy backend
+        run: make backend-push
+
+      - name: Deploy frontend
+        run: make frontend-deploy
+
+      - name: Apply Terraform
+        run: make tf-apply
