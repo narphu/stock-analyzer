@@ -131,7 +131,7 @@ def train_lstm(ticker, df):
 
     model = Sequential()
     model.add(LSTM(50, activation="relu", input_shape=(window, 1)))
-    model.add(Dense(3))
+    model.add(Dense(1))
     model.compile(optimizer="adam", loss="mse")
 
     model.fit(
@@ -144,7 +144,6 @@ def train_lstm(ticker, df):
 
     preds = model.predict(X_val).flatten()
     acc = 1 - safe_mape(y_val, preds)
-
     save_model(model, path, is_keras=True)
     accuracy_tracker["lstm"][ticker] = round(acc, 4)
     print(f"✅ LSTM Model for {ticker} trained.")
@@ -182,16 +181,18 @@ def train_heavy_models(ticker):
         print(f"❌ Failed {ticker}: {e}")
 
 def train_all_sp500():
-    tickers = get_sp500_tickers()
+    tickers = ["AAPL"]
     print(f"📈 Found {len(tickers)} S&P 500 tickers")
     # This maximizes CPU usage while avoiding deadlocks and mutex corruption from TensorFlow under concurrency.
     # Light models (thread-safe)
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        executor.map(train_light_models, tickers)
+    # with ThreadPoolExecutor(max_workers=4) as executor:
+    #     executor.map(train_light_models, tickers)
 
     # Heavy models (TensorFlow)
     with ProcessPoolExecutor(max_workers=1) as executor:
         executor.map(train_heavy_models, tickers)
+    
+    print(f"{accuracy_tracker.items()}")
     
     # Save accuracy.json per model
     for model, accs in accuracy_tracker.items():
