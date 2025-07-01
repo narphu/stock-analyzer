@@ -14,6 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { ArrowForwardIcon } from "@chakra-ui/icons";
 
 const MotionBox = motion(Box);
 const MotionHeading = motion(Heading);
@@ -45,7 +46,7 @@ export default function Explore() {
     setError("");
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL;
-      const params = new URLSearchParams({ days });
+      const params = new URLSearchParams({});
       const [gainRes, loseRes] = await Promise.all([
         axios.get(`${baseUrl}/explore/top-gainers?${params}`),
         axios.get(`${baseUrl}/explore/top-losers?${params}`),
@@ -89,16 +90,16 @@ export default function Explore() {
           {item.ticker}
         </Text>
         <Badge colorScheme={isGainer ? "green" : "red"}>
-          {item.forecast_pct_change > 0 ? "+" : ""}
-          {item.forecast_pct_change}%
+          {item.percent_change > 0 ? "+" : ""}
+          {item.percent_change}%
         </Badge>
       </Flex>
       <Text fontSize="sm" color="gray.500">
         {item.name}
       </Text>
       <Text mt={2} fontSize="sm">
-        Price: ${item.price}
-      </Text>
+        Current Price: ${item.current_price}  <ArrowForwardIcon/> Predicted Price: ${item.predicted_price}
+      </Text> 
     </MotionBox>
   );
 
