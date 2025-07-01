@@ -13,9 +13,12 @@ import {
   useColorModeValue,
 } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { ArrowForwardIcon } from "@chakra-ui/icons";
 
 const MotionBox = motion(Box);
 const MotionHeading = motion(Heading);
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
@@ -26,9 +29,7 @@ const cardVariants = {
 };
 
 export default function Explore() {
-  const [model, setModel] = useState("prophet");
   const [days, setDays] = useState(30);
-  const [sector, setSector] = useState("All");
   const [gainers, setGainers] = useState([]);
   const [losers, setLosers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,23 +39,21 @@ export default function Explore() {
   const cardBg = useColorModeValue("white", "gray.700");
   const headingColor = useColorModeValue("teal.600", "teal.300");
 
-  const sectors = ["All", "Technology", "Financials", "Healthcare", "Consumer Discretionary", "Utilities", "Industrials"];
+  const navigate = useNavigate();
 
   const fetchExplore = async () => {
     setLoading(true);
     setError("");
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL;
-      const params = new URLSearchParams({ model, days });
-      if (sector && sector !== "All") params.append("sector", sector);
-
+      const params = new URLSearchParams({});
       const [gainRes, loseRes] = await Promise.all([
         axios.get(`${baseUrl}/explore/top-gainers?${params}`),
         axios.get(`${baseUrl}/explore/top-losers?${params}`),
       ]);
 
-      setGainers(gainRes.data);
-      setLosers(loseRes.data);
+      setGainers(gainRes.data || []);
+      setLosers(loseRes.data || []);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load explore data.");
     } finally {
@@ -64,7 +63,45 @@ export default function Explore() {
 
   useEffect(() => {
     fetchExplore();
-  }, [model, days, sector]);
+  }, [days]);
+
+  const renderCard = (item, isGainer = true) => (
+    <MotionBox
+      key={item.ticker}
+      bg={cardBg}
+      p={4}
+      rounded="xl"
+      shadow="md"
+      variants={cardVariants}
+      whileHover={{ scale: 1.05 }}
+      transition={{ duration: 0.2 }}
+      cursor="pointer"
+      onClick={() =>
+        navigate("/", {
+          state: {
+            ticker: item.ticker,
+            triggerPrediction: true,
+          },
+        })
+      }
+    >
+      <Flex justify="space-between">
+        <Text fontSize="lg" fontWeight="bold">
+          {item.ticker}
+        </Text>
+        <Badge colorScheme={isGainer ? "green" : "red"}>
+          {item.percent_change > 0 ? "+" : ""}
+          {item.percent_change}%
+        </Badge>
+      </Flex>
+      <Text fontSize="sm" color="gray.500">
+        {item.name}
+      </Text>
+      <Text mt={2} fontSize="sm">
+        Current Price: ${item.current_price}  <ArrowForwardIcon/> Predicted Price: ${item.predicted_price}
+      </Text> 
+    </MotionBox>
+  );
 
   return (
     <Box position="relative" overflow="hidden">
@@ -92,33 +129,8 @@ export default function Explore() {
           </MotionHeading>
         </AnimatePresence>
 
-        {/* Filters */}
-        <Flex wrap="wrap" gap={4}>
-          {[
-            { label: 'Model', value: model, setter: setModel, options: ['prophet','arima','xgboost','lstm'] },
-            { label: 'Days', value: days, setter: setDays, options: [1,2,7,10,30,90] },
-            { label: 'Sector', value: sector, setter: setSector, options: sectors }
-          ].map(({ label, value, setter, options }) => (
-            <Select
-              key={label}
-              value={value}
-              onChange={(e) => setter(
-                typeof value === 'number' ? Number(e.target.value) : e.target.value
-              )}
-              maxW="200px"
-              placeholder={label}
-            >
-              {options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt.toString().toUpperCase()}
-                </option>
-              ))}
-            </Select>
-          ))}
-        </Flex>
-
         {loading ? (
-          <Flex justify="center">
+          <Flex justify="center" py={10}>
             <Spinner size="lg" color="teal.500" />
           </Flex>
         ) : error ? (
@@ -126,72 +138,29 @@ export default function Explore() {
             {error}
           </Text>
         ) : (
-          <Box as={motion.div} variants={containerVariants} initial="hidden" animate="visible">
+          <Box
+            as={motion.div}
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {/* Gainers Section */}
             <Box my={8}>
               <Heading size="md" mb={4} color="green.500">
-                Top Gainers
+                📈 Top Gainers
               </Heading>
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                {gainers.map((item) => (
-                  <MotionBox
-                    key={item.ticker}
-                    bg={cardBg}
-                    p={4}
-                    rounded="xl"
-                    shadow="md"
-                    variants={cardVariants}
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Flex justify="space-between">
-                      <Text fontSize="lg" fontWeight="bold">
-                        {item.ticker}
-                      </Text>
-                      <Badge colorScheme="green">+{item.forecast_pct_change}%</Badge>
-                    </Flex>
-                    <Text fontSize="sm" color="gray.500">
-                      {item.sector}
-                    </Text>
-                    <Text mt={2} fontSize="sm">
-                      Volatility: {item.volatility}
-                    </Text>
-                  </MotionBox>
-                ))}
+              <SimpleGrid columns={{ base: 1, sm: 2, md: 2, lg: 3 }} spacing={6}>
+                {gainers.map((item) => renderCard(item, true))}
               </SimpleGrid>
             </Box>
 
             {/* Losers Section */}
             <Box my={8}>
               <Heading size="md" mb={4} color="red.500">
-                Top Losers
+                📉 Top Losers
               </Heading>
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-                {losers.map((item) => (
-                  <MotionBox
-                    key={item.ticker}
-                    bg={cardBg}
-                    p={4}
-                    rounded="xl"
-                    shadow="md"
-                    variants={cardVariants}
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Flex justify="space-between">
-                      <Text fontSize="lg" fontWeight="bold">
-                        {item.ticker}
-                      </Text>
-                      <Badge colorScheme="red">{item.forecast_pct_change}%</Badge>
-                    </Flex>
-                    <Text fontSize="sm" color="gray.500">
-                      {item.sector}
-                    </Text>
-                    <Text mt={2} fontSize="sm">
-                      Volatility: {item.volatility}
-                    </Text>
-                  </MotionBox>
-                ))}
+              <SimpleGrid columns={{ base: 1, sm: 2, md: 2, lg: 3 }} spacing={6}>
+                {losers.map((item) => renderCard(item, false))}
               </SimpleGrid>
             </Box>
           </Box>

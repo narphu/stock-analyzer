@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect  } from "react";
 import axios from "axios";
 import {
   Box,
@@ -10,9 +10,13 @@ import {
   useColorModeValue,
   VStack,
   Select,
+  IconButton,
+  useDisclosure,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { FiMenu } from "react-icons/fi";
 
 import HeroLandingPage from "./components/HeroLandingPage";
 import Navbar from "./components/NavBar";
@@ -21,15 +25,15 @@ import TickerSearch from "./components/TickerSearch";
 import Dashboard from "./components/Dashboard";
 import CompareModels from "./components/CompareModels";
 import Explore from "./components/Explore";
+import About from "./components/About";
 
 function MainLayout() {
   const location = useLocation();
+  const tickerFromExplore = location.state?.ticker;
+  const shouldTriggerPrediction = location.state?.triggerPrediction;
   const [heroVisible, setHeroVisible] = useState(true);
-
-  // Only show hero on home
   const isHome = location.pathname === "/";
 
-  // refs & state for Dashboard
   const dashboardRef = useRef(null);
   const [predictions, setPredictions] = useState([]);
   const [metrics, setMetrics] = useState([]);
@@ -40,6 +44,9 @@ function MainLayout() {
   const [selectedModel, setSelectedModel] = useState("prophet");
   const modelOptions = ["prophet", "arima", "xgboost", "lstm"];
 
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  
   const handleCTAClick = () => {
     setHeroVisible(false);
     setTimeout(() => {
@@ -71,6 +78,7 @@ function MainLayout() {
       setTimeout(() => {
         dashboardRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 300);
+
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to fetch data.");
     } finally {
@@ -78,9 +86,15 @@ function MainLayout() {
     }
   };
 
+  useEffect(() => {
+    if (tickerFromExplore && shouldTriggerPrediction) {
+      fetchPredictions(tickerFromExplore);
+    }
+  }, [tickerFromExplore, shouldTriggerPrediction]);
+
+
   return (
     <Flex direction="column" minH="100vh" position="relative">
-      {/* HERO only on home */}
       {isHome && (
         <AnimatePresence>
           {heroVisible && (
@@ -104,14 +118,33 @@ function MainLayout() {
         </AnimatePresence>
       )}
 
-      {/* Navbar */}
-      {!isHome || !heroVisible ? <Navbar /> : null}
+      {!isHome || !heroVisible ? (
+        <>
+          <Navbar />
+          {isMobile && (
+            <IconButton
+              icon={<FiMenu />}
+              onClick={onOpen}
+              aria-label="Open menu"
+              m={4}
+              position="fixed"
+              top={4}
+              left={4}
+              zIndex={1000}
+            />
+          )}
+        </>
+      ) : null}
 
       <Flex flex="1">
-        {/* Sidebar */}
-        {!isHome || !heroVisible ? <Sidebar /> : null}
+        {!isHome || !heroVisible ? (
+          isMobile && isOpen ? (
+            <Sidebar isMobile onClose={onClose} />
+          ) : (
+            <Sidebar />
+          )
+        ) : null}
 
-        {/* Main content */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -120,75 +153,78 @@ function MainLayout() {
         >
           <Box p={{ base: 4, md: 8 }}>
             <Routes location={location} key={location.pathname}>
-              <Route path="/" element={
-                <VStack spacing={6} align="stretch">
-                  <Heading
-                    size="2xl"
-                    textAlign="center"
-                    color="teal.600"
-                    fontWeight="bold"
-                  >
-                    Stock Analyzer Dashboard
-                  </Heading>
-
-                  {/* Search + Model Select */}
-                  <Flex
-                    direction={{ base: "column", md: "row" }}
-                    justify="space-between"
-                    align="center"
-                    gap={4}
-                    p={4}
-                    bg="gray.50"
-                    borderRadius="xl"
-                  >
-                    <TickerSearch onSelect={fetchPredictions} />
-                    <Select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      maxW="200px"
-                      placeholder="Select Model"
-                      bg="white"
-                      borderColor="gray.300"
+              <Route
+                path="/"
+                element={
+                  <VStack spacing={6} align="stretch">
+                    <Heading
+                      size="2xl"
+                      textAlign="center"
+                      color="teal.600"
+                      fontWeight="bold"
                     >
-                      {modelOptions.map((m) => (
-                        <option key={m} value={m}>
-                          {m.toUpperCase()}
-                        </option>
-                      ))}
-                    </Select>
-                  </Flex>
+                      Stock Analyzer Dashboard
+                    </Heading>
 
-                  {loading && (
-                    <Flex justify="center" align="center" minH="100px">
-                      <Spinner size="lg" color="teal.500" />
+                    <Flex
+                      direction={{ base: "column", md: "row" }}
+                      justify="space-between"
+                      align="center"
+                      gap={4}
+                      p={4}
+                      bg="gray.50"
+                      borderRadius="xl"
+                    >
+                      <TickerSearch onSelect={fetchPredictions} />
+                      <Select
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        maxW="200px"
+                        placeholder="Select Model"
+                        bg="white"
+                        borderColor="gray.300"
+                      >
+                        {modelOptions.map((m) => (
+                          <option key={m} value={m}>
+                            {m.toUpperCase()}
+                          </option>
+                        ))}
+                      </Select>
                     </Flex>
-                  )}
 
-                  {error && (
-                    <Text color="red.500" fontWeight="medium">
-                      ❌ {error}
-                    </Text>
-                  )}
-                  <Box ref={dashboardRef}>
-                    {predictions.length > 0 ? (
-                      <Dashboard
-                        predictions={predictions}
-                        metrics={metrics}
-                        ticker={selectedTicker}
-                        selectedModel={selectedModel}
-                        accuracy={accuracy}
-                      />
-                    ) : (
-                      <Text color="gray.500" textAlign="center" mt={4}>
-                        Enter a ticker to see predictions.
+                    {loading && (
+                      <Flex justify="center" align="center" minH="100px">
+                        <Spinner size="lg" color="teal.500" />
+                      </Flex>
+                    )}
+
+                    {error && (
+                      <Text color="red.500" fontWeight="medium">
+                        ❌ {error}
                       </Text>
                     )}
-                  </Box>
-                </VStack>
-              }/>
 
+                    <Box ref={dashboardRef}>
+                      {predictions.length > 0 ? (
+                        <Dashboard
+                          predictions={predictions}
+                          metrics={metrics}
+                          ticker={selectedTicker}
+                          selectedModel={selectedModel}
+                          accuracy={accuracy}
+                        />
+                      ) : (
+                        <Text color="gray.500" textAlign="center" mt={4}>
+                          Enter a ticker to see predictions.
+                        </Text>
+                      )}
+                    </Box>
+                  </VStack>
+                }
+              />
               <Route path="/compare" element={<CompareModels />} />
               <Route path="/explore" element={<Explore />} />
+              <Route path="/about" element={<About />} />
             </Routes>
           </Box>
         </motion.div>

@@ -130,7 +130,6 @@ def get_stock_metrics(ticker: str = Query(..., description="Stock ticker symbol"
 @app.get("/explore/top-gainers", response_model=List[Dict])
 async def top_gainers(limit: int = Query(10, ge=1, le=100)):
     data = load_cached_explore_data()
-    print(data)
     return data.get("top_gainers", [])[:limit]
 
 @app.get("/explore/top-losers", response_model=List[Dict])
