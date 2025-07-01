@@ -126,54 +126,17 @@ def get_stock_metrics(ticker: str = Query(..., description="Stock ticker symbol"
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Helpers for explore
-
-def get_latest_close(ticker: str) -> float:
-    hist = yf.Ticker(ticker).history(period="2d")
-    if hist.empty:
-        raise ValueError(f"No recent price data for {ticker}")
-    return float(hist["Close"].iloc[-1])
-
-
-def compute_volatility(ticker: str, window_days: int = 252) -> float:
-    hist = yf.Ticker(ticker).history(period=f"{window_days}d")
-    if len(hist) < 2:
-        return 0.0
-    returns = hist["Close"].pct_change().dropna()
-    return float(returns.std() * np.sqrt(252))
-
-async def _fetch_scores(
-    tickers: List[str], days: int, model_name: str
-) -> List[Dict]:
-    results = []
-    for t in tickers:
-        try:
-            pred = predict_price(t, model_name, days)
-            latest = get_latest_close(t)
-            pct = (pred - latest) / latest * 100
-            meta = SP500_METADATA.get(t, {})
-            vol = compute_volatility(t)
-            results.append({
-                "ticker": t,
-                "forecast_pct_change": round(pct, 2),
-                "sector": meta.get("sector", "Unknown"),
-                "volatility": round(vol, 4),
-            })
-        except Exception as e:
-            logger.error(f"[score-error] ticker={t} model={model_name} err={e}")
-            continue
-    return results
-
-
+# Explore
 @app.get("/explore/top-gainers", response_model=List[Dict])
 async def top_gainers(limit: int = Query(10, ge=1, le=100)):
     data = load_cached_explore_data()
-    return data.get("gainers", [])[:limit]
+    print(data)
+    return data.get("top_gainers", [])[:limit]
 
 @app.get("/explore/top-losers", response_model=List[Dict])
 async def top_losers(limit: int = Query(10, ge=1, le=100)):
     data = load_cached_explore_data()
-    return data.get("losers", [])[:limit]
+    return data.get("top_losers", [])[:limit]
 
 # Compare models DRY
 @app.get("/compare/{ticker}", response_model=Dict[str, Dict])

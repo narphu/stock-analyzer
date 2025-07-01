@@ -187,13 +187,16 @@ def list_available_tickers(model: str = "prophet") -> List[str]:
 
 # Explore data precomputed. Only available on S3.
 def load_cached_explore_data():
-    if USE_LOCAL:
-        print(f"Explore unavailable locally")
-        return {"gainers": [], "losers": []}
     try:
-        obj = s3.get_object(Bucket=S3_BUCKET, Key=EXPLORE_KEY)
-        content = obj["Body"].read().decode("utf-8")
-        return json.loads(content)
+        if USE_LOCAL:
+            explore_data_path = os.path.join(LOCAL_MODEL_DIR,EXPLORE_KEY)
+            print(f"Reading explore data from {explore_data_path}")
+            with open(explore_data_path, 'r') as f:
+                content = json.load(f)
+        else:
+            obj = s3.get_object(Bucket=S3_BUCKET, Key=EXPLORE_KEY)
+            content = json.loads(obj["Body"].read().decode("utf-8"))
+        return content
     except Exception as e:
         print(f"⚠️ Failed to load cached explore data: {e}")
         return {"gainers": [], "losers": []}
