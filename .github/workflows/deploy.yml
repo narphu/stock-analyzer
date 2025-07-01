@@ -16,6 +16,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: prod-deploy
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -30,7 +31,7 @@ jobs:
         run: echo "BACKEND_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
 
       - name: Deploy backend
-        run: make backend-push
+        run: make push-backend
 
       - name: Deploy frontend
         run: make frontend-deploy
