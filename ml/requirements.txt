@@ -9,6 +9,6 @@ lxml
 requests
 plotly
 sagemaker-training
-tensorflow
+tensorflow>=2.13.1
 xgboost
 statsmodels

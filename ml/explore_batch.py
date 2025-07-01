@@ -2,23 +2,31 @@ import pandas as pd
 import numpy as np
 from prophet import Prophet
 from sklearn.preprocessing import MinMaxScaler
-from statsmodels.tsa.arima.model import ARIMAResults
 import xgboost as xgb
-from keras.models import load_model as load_lstm_model
+from tensorflow import keras
 import joblib
 import os
 import boto3
 import tempfile
 import yfinance as yf
 from train_model import get_sp500_tickers
+from datetime import datetime
+import json
 
-MODEL_DIR = "models"
+USE_LOCAL = os.getenv("USE_LOCAL_MODELS", "false").lower() == "true"
+if USE_LOCAL:
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
+    MODEL_DIR = os.getenv("MODEL_OUTPUT_DIR", os.path.join(BASE_DIR, "models"))
+else:
+    MODEL_DIR = "/opt/ml/model"
+
 LOOKAHEAD_DAYS = 30
 TOP_N = 5
 MODEL_NAMES = ["prophet", "arima", "xgboost", "lstm"]
 BUCKET = "shrubb-ai-ml-models"
 DEST_KEY = "analytics/gainers_losers.json"
-SP500_TICKERS = get_sp500_tickers()
+#SP500_TICKERS = get_sp500_tickers()
+SP500_TICKERS=["AAPL"]
 
 
 s3 = boto3.client("s3")
@@ -31,7 +39,7 @@ def prepare_yfinance_data(ticker: str):
 
 
 def download_model(ticker: str, model: str) -> str:
-    ext = ".h5" if model == "lstm" else ".pkl"
+    ext = ".keras" if model == "lstm" else ".pkl"
     key = f"models/{model}/{ticker}{ext}"
     local_path = os.path.join(MODEL_DIR, model, f"{ticker}{ext}")
 
@@ -52,11 +60,11 @@ def load_model(ticker: str, model: str):
     if model == "prophet":
         return joblib.load(path)
     elif model == "arima":
-        return ARIMAResults.load(path)
+        return joblib.load(path)
     elif model == "xgboost":
         return joblib.load(path)
     elif model == "lstm":
-        return load_lstm_model(path)
+        return keras.models.load_model(path, compile=False)
     else:
         raise ValueError(f"Unsupported model {model}")
 
@@ -105,7 +113,7 @@ def predict_price(ticker: str, model: str, days: int) -> float:
 def get_current_price(ticker: str) -> float:
     try:
         data = yf.download(ticker, period="7d", interval="1d")
-        return data["Close"][-1] if not data.empty else None
+        return data["Close"][ticker][-1] if not data.empty else None
     except Exception as e:
         print(f"⚠️ Failed to get current price for {ticker}: {e}")
         return None
@@ -127,6 +135,7 @@ def compute_gainers_losers():
                     preds.append(pred)
                 except Exception as e:
                     print(f"⚠️ Model {model} failed for {ticker}: {e}")
+                    continue
 
             if not preds:
                 continue
@@ -154,12 +163,22 @@ def compute_gainers_losers():
         "top_losers": losers,
     }
 
-    s3.put_object(
-        Bucket=BUCKET,
-        Key=DEST_KEY,
-        Body=json.dumps(output),
-        ContentType="application/json"
-    )
+    if not USE_LOCAL:
+
+        s3.put_object(
+            Bucket=BUCKET,
+            Key=DEST_KEY,
+            Body=json.dumps(output),
+            ContentType="application/json"
+        )
+    else:
+        try:
+            path = os.path.join(MODEL_DIR, DEST_KEY)
+            with open(path, "w") as f:
+                json.dump(output, f, indent=2)
+            print(f"📈 Saved gainers losers for {output}")
+        except Exception as e:
+            print(f"❌ Failed to save gainers_losers.json: {e}")
 
     print(f"✅ Uploaded analytics to s3://{BUCKET}/{DEST_KEY}")
 
