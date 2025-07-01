@@ -6,16 +6,16 @@ import {
   Button,
   VStack,
   useColorModeValue,
+  Stack,
 } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import Features from "./Features";
 
-
-// Wrap Chakra’s VStack with motion to animate its children
+// Motion-wrapped VStack
 const MotionVStack = motion(VStack);
+const MotionButton = motion(Button);
 
 export default function HeroLandingPage({ onCTAClick }) {
-  // Color tokens that adapt to light/dark mode
   const bg = useColorModeValue("gray.50", "gray.900");
   const titleColor = useColorModeValue("teal.600", "teal.300");
 
@@ -24,38 +24,51 @@ export default function HeroLandingPage({ onCTAClick }) {
       as="section"
       w="100%"
       minH="100vh"
-      bgGradient="linear(to-br, teal.50, white)"
+      bgGradient="linear(to-br, teal.100, white)"
       display="flex"
       alignItems="center"
       justifyContent="center"
-      px={6}
+      px={{ base: 4, md: 8 }}
+      py={{ base: 10, md: 20 }}
+      flexDirection="column"
+      overflowX="hidden"
     >
       <MotionVStack
         spacing={6}
-        maxW="lg"
+        maxW={{ base: "full", sm: "xl", md: "2xl" }}
         textAlign="center"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
-        <Heading as="h1" size="2xl" color={titleColor} lineHeight="short">
+        <Heading
+          as="h1"
+          fontSize={{ base: "3xl", sm: "4xl", md: "5xl" }}
+          color={titleColor}
+          lineHeight="short"
+        >
           AI-Powered Stock Forecasting
         </Heading>
-        <Text fontSize="lg" color="gray.600">
+
+        <Text fontSize={{ base: "md", sm: "lg" }} color="gray.600">
           Get future stock insights with cutting-edge ML models. Forecast returns,
           compare models, and explore trends in real time.
         </Text>
-        <Button
+
+        <MotionButton
           size="lg"
           colorScheme="teal"
           onClick={onCTAClick}
-          whilehover={{ scale: 1.05 }}
-          whiletap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
           Start Forecasting
-        </Button>
+        </MotionButton>
       </MotionVStack>
-      <Features></Features>
+
+      <Box mt={{ base: 10, md: 16 }} w="100%" maxW="6xl" px={{ base: 4, md: 8 }}>
+        <Features />
+      </Box>
     </Box>
   );
 }

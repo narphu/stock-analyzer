@@ -1,4 +1,15 @@
-import { Box, Text, SimpleGrid, Stat, StatLabel, StatNumber, useColorModeValue, Flex, Badge, Heading } from "@chakra-ui/react";
+import {
+  Box,
+  Text,
+  SimpleGrid,
+  Stat,
+  StatLabel,
+  StatNumber,
+  useColorModeValue,
+  Flex,
+  Badge,
+  Heading,
+} from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 
@@ -10,26 +21,41 @@ export default function Dashboard({ predictions, metrics, ticker, selectedModel,
   const statBg = useColorModeValue("gray.50", "gray.700");
   const borderColor = useColorModeValue("gray.100", "gray.600");
 
-  const accuracyValue = useMemo(() => {
-    if (!accuracy) return null;
-    return accuracy;
-  }, [accuracy]);
+  const accuracyValue = useMemo(() => accuracy ?? null, [accuracy]);
 
   return (
-    <Box mt={10}>
-      <Flex justify="space-between" align="center" mb={4}>
-        <Heading size="lg" color={highlight} fontFamily="Inter">
+    <Box mt={{ base: 6, md: 10 }}>
+      <Flex
+        direction={{ base: "column", sm: "row" }}
+        justify="space-between"
+        align={{ base: "flex-start", sm: "center" }}
+        mb={6}
+        gap={2}
+        wrap="wrap"
+      >
+        <Heading
+          fontSize={{ base: "xl", md: "2xl" }}
+          color={highlight}
+          fontFamily="Inter"
+        >
           {ticker} Forecast
         </Heading>
 
         {accuracyValue !== undefined && (
-          <Badge fontSize="md" colorScheme="green" variant="subtle" px={3} py={1} borderRadius="md">
+          <Badge
+            fontSize="sm"
+            colorScheme="green"
+            variant="subtle"
+            px={3}
+            py={1}
+            borderRadius="md"
+          >
             Accuracy ({selectedModel.toUpperCase()}): {accuracyValue}
           </Badge>
         )}
       </Flex>
 
-      <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={6} mt={4}>
+      <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={5}>
         {predictions.map((item) => (
           <MotionBox
             key={item.days}
@@ -45,7 +71,7 @@ export default function Dashboard({ predictions, metrics, ticker, selectedModel,
             <Text fontSize="sm" color="gray.500">
               {item.date}
             </Text>
-            <Text fontSize="3xl" fontWeight="bold" color={highlight}>
+            <Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="bold" color={highlight}>
               ${item.price}
             </Text>
             <Text fontSize="md" mt={2} color="gray.600">
@@ -56,12 +82,18 @@ export default function Dashboard({ predictions, metrics, ticker, selectedModel,
       </SimpleGrid>
 
       <Box mt={10}>
-        <Text fontSize="xl" fontWeight="semibold" mb={4} color={highlight} fontFamily="Inter">
+        <Text
+          fontSize={{ base: "lg", md: "xl" }}
+          fontWeight="semibold"
+          mb={4}
+          color={highlight}
+          fontFamily="Inter"
+        >
           Key Stock Metrics
         </Text>
 
         {metrics ? (
-          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={6}>
+          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5}>
             {Object.entries(metrics).map(([key, value]) => (
               <Stat
                 key={key}
