@@ -37,12 +37,63 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 accuracy_tracker = defaultdict(dict)
 
 def get_sp500_tickers():
+    # Optional local fallback (set SP500_TICKERS_FILE to a csv/json path with column/key 'Symbol')
+    local_file = os.getenv("SP500_TICKERS_FILE")
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
-    table = soup.find("table", {"id": "constituents"})
-    tickers = pd.read_html(str(table))[0]["Symbol"].tolist()
-    return [t.replace(".", "-") for t in tickers]
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+    }
+
+    # 1) Try live fetch with a real UA
+    try:
+        resp = requests.get(url, headers=headers, timeout=20)
+        resp.raise_for_status()
+
+        # Try the table by id first
+        tables = pd.read_html(resp.text, attrs={"id": "constituents"}, flavor="lxml")
+        if not tables:
+            # Fallback: scan all tables and pick the one that has a 'Symbol' column
+            all_tables = pd.read_html(resp.text, flavor="lxml")
+            tables = [t for t in all_tables if "Symbol" in t.columns]
+
+        if tables:
+            df = tables[0]
+            tickers = (
+                df["Symbol"]
+                .astype(str)
+                .str.strip()
+                .str.replace(".", "-", regex=False)  # BRK.B -> BRK-B
+                .tolist()
+            )
+            if tickers:
+                return tickers
+        # If we got here, live parse failed
+        raise RuntimeError("Wikipedia structure changed or empty table.")
+    except Exception as e:
+        # 2) Fallback: local file if provided
+        if local_file and os.path.exists(local_file):
+            ext = os.path.splitext(local_file)[1].lower()
+            if ext == ".csv":
+                df = pd.read_csv(local_file)
+                if "Symbol" in df.columns:
+                    return (df["Symbol"].astype(str).str.replace(".", "-", regex=False)).tolist()
+            elif ext in (".json", ".ndjson"):
+                with open(local_file, "r") as f:
+                    data = json.load(f)
+                # Accept either a dict with "Symbol" or a list of dicts
+                if isinstance(data, dict) and "Symbol" in data:
+                    data = [data]
+                if isinstance(data, list) and data and "Symbol" in data[0]:
+                    return [str(d["Symbol"]).replace(".", "-") for d in data]
+
+        # 3) Last resort: tiny baked-in seed list to keep the pipeline alive
+        seed = ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "BRK-B", "JPM", "XOM", "UNH"]
+        print(f"⚠️ get_sp500_tickers fallback due to: {e}. Using a seed list of {len(seed)} tickers.")
+        return seed
 
 def prepare_yfinance_data(ticker: str, period: str = "3y", interval: str = "1d") -> pd.DataFrame:
     df = yf.download(ticker, period=period, interval=interval, auto_adjust=False)
