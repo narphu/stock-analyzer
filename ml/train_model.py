@@ -181,12 +181,12 @@ def train_heavy_models(ticker):
         print(f"❌ Failed {ticker}: {e}")
 
 def train_all_sp500():
-    tickers = ["AAPL"]
+    tickers = get_sp500_tickers()
     print(f"📈 Found {len(tickers)} S&P 500 tickers")
     # This maximizes CPU usage while avoiding deadlocks and mutex corruption from TensorFlow under concurrency.
     # Light models (thread-safe)
-    # with ThreadPoolExecutor(max_workers=4) as executor:
-    #     executor.map(train_light_models, tickers)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        executor.map(train_light_models, tickers)
 
     # Heavy models (TensorFlow)
     with ProcessPoolExecutor(max_workers=1) as executor:
