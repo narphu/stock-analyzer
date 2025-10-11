@@ -12,3 +12,4 @@ sagemaker-training
 tensorflow>=2.13.1
 xgboost
 statsmodels
+html5lib
